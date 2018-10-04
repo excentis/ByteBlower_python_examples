@@ -9,7 +9,7 @@ This repository contains all public available Python examples on how to use the 
 
 
 ## Dependencies
-- scapy: pip install scapy
+- scapy: `pip install scapy`
 
 
 
