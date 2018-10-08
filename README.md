@@ -9,6 +9,7 @@ This repository contains all public available Python examples on how to use the 
 
 
 ## Dependencies
+- ByteBlower Pyton API : http://setup.byteblower.com/software.html#API
 - scapy: `pip install scapy`
 
 
