@@ -3,16 +3,16 @@ import time
 import random
 import datetime
 
-from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved
+from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved, ByteBlowerAPIException
 import sys
 
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': '10.5.5.144',
+    'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
 
     # Interface on the server to create a port on.
-    'server_interface': 'nontrunk-2',
+    'server_interface': 'trunk-1-13',
 
     # MAC address of the ByteBlower port which will be generated
     'port_mac_address': '00:bb:01:00:00:01',
@@ -35,8 +35,8 @@ configuration = {
     # Special value: None.  When the UUID is set to None, the example will
     #                       automatically select the first available wireless
     #                       endpoint.
-    # 'wireless_endpoint_uuid': None,
-    'wireless_endpoint_uuid': '6d9c2347-e6c1-4eea-932e-053801de32eb',
+    'wireless_endpoint_uuid': None,
+    # 'wireless_endpoint_uuid': '6d9c2347-e6c1-4eea-932e-053801de32eb',
 
     # TCP port for the HTTP server
     'port_tcp_port': 4096,
@@ -186,7 +186,7 @@ class Example:
             self.wireless_endpoint.Start()
         except Exception as e:
             print("Error couldn't start the WE")
-            print(e.what())
+            print(e.message)
             sys.exit(-1)
 
         # Wait until the device returns.
@@ -220,7 +220,7 @@ class Example:
         http_hist.Refresh()
 
         # save the results to CSV, this allows further analysis afterwards
-        self.write_csv_results(http_hist)
+        collected_results = self.collect_results(http_hist)
 
         cumulative_result = http_hist.CumulativeLatestGet()
         mbit_s = cumulative_result.AverageDataSpeedGet().bitrate() / 1e6
@@ -235,6 +235,7 @@ class Example:
         # Cleanup
         self.server.PortDestroy(self.port)
         self.wireless_endpoint.Lock(False)
+        return collected_results
 
     def select_wireless_endpoint_uuid(self):
         """
@@ -253,44 +254,40 @@ class Example:
         # No device found, return None
         return None
 
-    def write_csv_results(self, http_hist):
+    def collect_results(self, http_hist):
         """" Function that writes the results to CSV files.
         """
         sample_duration = http_hist.SamplingIntervalDurationGet()
-        with open('tx_tcp_server_interval.csv', 'a') as tx_results:
-            for tt in http_hist.IntervalGet():
-                tx_data = tt.TxByteCountTotalGet()
-                timestamp = tt.TimestampGet()
-                line = self.make_csv_line(self.human_readable_date(timestamp),
-                                          timestamp,
-                                          tx_data,
-                                          self.bytes_per_sample_to_mbit_s(sample_duration, tx_data))
-                tx_results.write(line)
+        tx_samples = []
+        for tt in http_hist.IntervalGet():
+            tx_data = tt.TxByteCountTotalGet()
+            timestamp = tt.TimestampGet()
+            tx_samples.append((timestamp, tx_data, self.bytes_per_sample_to_mbit_s(sample_duration, tx_data)))
 
-        with open('rx_tcp_server_interval.csv', 'a') as rx_results:
-            for tt in http_hist.IntervalGet():
-                rx_data = tt.RxByteCountTotalGet()
-                timestamp = tt.TimestampGet()
-                line = self.make_csv_line(self.human_readable_date(timestamp),
-                                          timestamp,
-                                          rx_data,
-                                          self.bytes_per_sample_to_mbit_s(sample_duration, rx_data))
-                rx_results.write(line)
+        rx_samples = []
+        for tt in http_hist.IntervalGet():
+            rx_data = tt.RxByteCountTotalGet()
+            timestamp = tt.TimestampGet()
+            rx_samples.append((timestamp, rx_data, self.bytes_per_sample_to_mbit_s(sample_duration, rx_data)))
 
-        with open('cumulative_http_server.csv', 'a') as res:
-            if http_hist.CumulativeLengthGet() > 0:
-                last_cumul = http_hist.CumulativeLatestGet()
-                mbit_s = last_cumul.AverageDataSpeedGet().bitrate() / 1e6
-                uploaded = last_cumul.TxByteCountTotalGet()
-                downloaded = last_cumul.RxByteCountTotalGet()
-                timestamp = last_cumul.TimestampGet()
-                line = self.make_csv_line(self.human_readable_date(timestamp),
-                                          timestamp,
-                                          mbit_s,
-                                          uploaded,
-                                          downloaded)
-                res.write(line)
-            # TODO what about a failure?
+        cumulative_samples = []
+        if http_hist.CumulativeLengthGet() > 0:
+            last_cumul = http_hist.CumulativeLatestGet()
+            mbit_s = last_cumul.AverageDataSpeedGet().bitrate() / 1e6
+            uploaded = last_cumul.TxByteCountTotalGet()
+            downloaded = last_cumul.RxByteCountTotalGet()
+            timestamp = last_cumul.TimestampGet()
+            cumulative_samples.append((timestamp, mbit_s, uploaded, downloaded))
+
+        return {
+            'we': {
+                'uuid': self.wireless_endpoint.DeviceIdentifierGet(),
+                'givenname': self.wireless_endpoint.DeviceInfoGet().GivenNameGet()
+            },
+            'tx': tx_samples,
+            'rx': rx_samples,
+            'cumulative': cumulative_samples
+        }
 
     @staticmethod
     def bytes_per_sample_to_mbit_s(sample_duration, n_bytes):
@@ -298,25 +295,35 @@ class Example:
             Utility method for conversion.
             It converts bytes in a sample to Mbit/s.
         """
-        return (n_bytes * 8 * 1e9) / (1e6 * sample_duration)
 
-    @staticmethod
-    def human_readable_date(bb_timestamp):
-        return str(datetime.datetime.fromtimestamp(bb_timestamp / 1e9))
 
-    def make_csv_line(self, *items):
-        wireless_endpoint = self.wireless_endpoint
-        all_itemslist = [
-            wireless_endpoint.DeviceInfoGet().GivenNameGet(),
-            wireless_endpoint.DeviceIdentifierGet()
-        ] + list(items)
-        all_items = map(str, all_itemslist)
-        return (", ".join(all_items)) + "\n"
+def human_readable_date(bb_timestamp):
+    return str(datetime.datetime.fromtimestamp(bb_timestamp / 1e9))
+
+
+def make_csv_line(we_uuid, we_name, *items):
+    all_itemslist = [we_uuid, we_name] + list(items)
+    all_items = map(str, all_itemslist)
+    return (", ".join(all_items)) + "\n"
 
 
 if __name__ == '__main__':
-    Example(**configuration).run()
+    results = Example(**configuration).run()
 
+    # Write the results to CSV files, those can be analyzed later.
+    uuid = results['we']['uuid']
+    givenname = results['we']['givenname']
+    with open('tx_tcp_server_interval.csv', 'a') as tx_results:
+        for tx_sample in results['tx']:
+            ts = human_readable_date(int(tx_sample[0]))
+            tx_results.write(make_csv_line(uuid, givenname, ts, *list(tx_sample)))
 
+    with open('rx_tcp_server_interval.csv', 'a') as rx_results:
+        for rx_sample in results['rx']:
+            ts = human_readable_date(int(rx_sample[0]))
+            rx_results.write(make_csv_line(uuid, givenname, ts, *list(rx_sample)))
 
-
+    with open('cumulative_http_server.csv', 'a') as res:
+        for cumulative_sample in results['cumulative']:
+            ts = human_readable_date(int(cumulative_sample[0]))
+            res.write(make_csv_line(uuid, givenname, ts, *list(cumulative_sample)))
