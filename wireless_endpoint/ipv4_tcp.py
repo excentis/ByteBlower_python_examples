@@ -295,6 +295,7 @@ class Example:
             Utility method for conversion.
             It converts bytes in a sample to Mbit/s.
         """
+        return (n_bytes * 8 * 1e9) / (1e6 * sample_duration)
 
 
 def human_readable_date(bb_timestamp):
