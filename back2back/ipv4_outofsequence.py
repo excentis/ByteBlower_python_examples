@@ -6,166 +6,256 @@ Copyright 2018, Excentis N.V.
 """
 
 from __future__ import print_function
-from byteblowerll.byteblower import ByteBlower, DHCPFailed
-from example_generic import create_frame_ipv4_udp
+from byteblowerll.byteblower import ByteBlower
 
 from time import sleep
 
 
-def initialize_port(server, interface, mac_address):
-    # Create the port on the interface
-    port = server.PortCreate(interface)
+configuration = {
+    # Address (IP or FQDN) of the ByteBlower server to use
+    'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
 
-    # a host has a MAC address and an IP address, so initialize those
-    eth_configuration = port.Layer2EthIISet()
-    eth_configuration.MacSet(mac_address)
+    # Configuration for the first ByteBlower port.  Will be used as the TX port.
+    'port_1_config': {
+        'interface': 'trunk-1-13',
+        'mac': '00:bb:01:00:00:01',
+        # IP configuration for the ByteBlower Port.  Only IPv4 is supported
+        # Options are 'DHCPv4', 'static'
+        # if DHCPv4, use "dhcpv4"
+        'ip': 'dhcpv4',
+        # if staticv4, use ["ipaddress", netmask, gateway]
+        # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
+    },
 
-    ipv4_configuration = port.Layer3IPv4Set()
-    # lets do DHCP
-    dhcp_protocol = ipv4_configuration.ProtocolDhcpGet()
-    try:
-        dhcp_protocol.Perform()
-    except(DHCPFailed):
-        print("Unable to run DHCP for port on interface", interface)
-        raise
+    # Configuration for the second ByteBlower port.  Will be used as RX port.
+    'port_2_config': {
+        'interface': 'trunk-1-14',
+        'mac': '00:bb:01:00:00:02',
+        # IP configuration for the ByteBlower Port.  Only IPv4 is supported
+        # Options are 'DHCPv4', 'static'
+        # if DHCPv4, use "dhcpv4"
+        'ip': 'dhcpv4',
+        # if staticv4, use ["ipaddress", netmask, gateway]
+        # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
+    },
 
-    return port
+    # number of frames to send.
+    'number_of_frames': 10000,
+
+    # Inter frame gap to use in nanoseconds.
+    # example: 1000000ns is 1ms, which is 1000pps
+    'interframegap_nanoseconds': 1000000
+}
 
 
-def run_example(server_address, interface1, interface2):
-    """
-    This example configures a small UDP frameblasting flow with out of sequence detection enabled.
-    :param server_address: Server to run the test on
-    :param interface1: name of the first interface.  This interface will be used as source.
-    :param interface2: name of the second interface.  This interfaces will be used as destination
-    :return: None
-    """
+class Example:
+    def __init__(self, **kwargs):
+        self.server_address = kwargs['server_address']
+        self.port_1_config = kwargs['port_1_config']
+        self.port_2_config = kwargs['port_2_config']
 
-    byteblower_instance = ByteBlower.InstanceGet()
+        self.number_of_frames = kwargs['number_of_frames']
+        self.interframegap_ns = kwargs['interframegap_nanoseconds']
 
-    # Connect to the ByteBlower server.
-    server = byteblower_instance.ServerAdd(server_address)
+        self.server = None
+        self.port_1 = None
+        self.port_2 = None
 
-    # create the ByteBlower Ports.  A ByteBlower port simulates a host in the network.
-    port1 = initialize_port(server, interface1, mac_address="00:bb:00:00:00:01")
-    port2 = initialize_port(server, interface2, mac_address="00:bb:00:00:00:02")
+    def run(self):
+        byteblower_instance = ByteBlower.InstanceGet()
 
-    # now create the stream.  A stream transmits frames on the port on which it is created.
-    stream = port1.TxStreamAdd()
+        print("Connecting to ByteBlower server {}...".format(self.server_address))
+        self.server = byteblower_instance.ServerAdd(self.server_address)
 
-    # how many frames will we transmit?
-    stream.NumberOfFramesSet(1000)
-    # how fast must we transmit frames?
-    # lets say 100 pps, so every 10ms
-    # The unit is in nanoseconds, so 10ms = 10000000ns
-    stream.InterFrameGapSet(10000000)
+        # Create the port which will be the HTTP server (port_1)
+        print("Creating TX port")
+        self.port_1 = self.provision_port(self.port_1_config)
 
-    # so the Stream will send 1000 frames at 100pps
+        print("Creating RX port")
+        # Create the port which will be the HTTP client (port_2)
+        self.port_2 = self.provision_port(self.port_2_config)
 
-    # a stream transmits frames, so we need to tell the stream which frames we want to transmit
-    frame = stream.FrameAdd()
+        # now create the stream.  A stream transmits frames on the port on which it is created.
+        stream = self.port_1.TxStreamAdd()
 
-    # collect the frame header info.  We need to provide the Layer2 (ethernet) and Layer3 (IPv4) addresses.
-    srcIp = port1.Layer3IPv4Get().IpGet()
-    srcMac = port1.Layer2EthIIGet().MacGet()
+        # set the number of frames to transmit
+        stream.NumberOfFramesSet(self.number_of_frames)
 
-    dstIp = port2.Layer3IPv4Get().IpGet()
+        # set the speed of the transmission
+        stream.InterFrameGapSet(self.interframegap_ns)
 
-    # the destination MAC is the MAC address of the destination port if the destination port is in the same
-    # subnet as the source port, otherwise it will be the MAC address of the gateway.
-    # ByteBlower has a function to resolve the correct MAC address in the Layer3 configuration object
-    dstMac = port1.Layer3IPv4Get().Resolve(dstIp)
+        # a stream transmits frames, so we need to tell the stream which frames we want to transmit
+        frame = stream.FrameAdd()
 
-    frame_bytes = create_frame_ipv4_udp(dstMac, srcMac,
-                                        dstIp, srcIp,
-                                        dstUdpPort=10000, srcUdpPort=11000,
-                                        length=512)
-    frame.BytesSet(frame_bytes)
+        # collect the frame header info.  We need to provide the Layer2 (ethernet) and Layer3 (IPv4) addresses.
+        src_ip = self.port_1_config['ip_address']
+        src_mac = self.port_1.Layer2EthIIGet().MacGet()
 
-    # Enable latency for this frame.  The frame frame contents will be altered so it contains a timestamp.
-    frame_tag = frame.FrameTagSequenceGet()
-    frame_tag.Enable(True)
+        dst_ip = self.port_2_config['ip_address']
 
-    # create a latency-enabled trigger.  A trigger is an object which receives data.
-    # The Basic trigger just count packets, a LatencyBasic trigger analyzes the timestamps embedded in the
-    # received frame.
-    oos_trigger = port2.RxOutOfSequenceBasicAdd()
+        # the destination MAC is the MAC address of the destination port if the destination port is in the same
+        # subnet as the source port, otherwise it will be the MAC address of the gateway.
+        # ByteBlower has a function to resolve the correct MAC address in the Layer3 configuration object
+        dst_mac = self.port_1.Layer3IPv4Get().Resolve(dst_ip)
 
-    # every trigger needs to know on which frames it will work.  The default filter is no filter, so it will
-    # analyze every frame, which is not what we want here.
-    # We will filter on the destination IP and the destination UDP port
-    filter = "ip dst {} and udp port 10000".format(dstIp)
-    oos_trigger.FilterSet(filter)
+        frame_size = 512
+        udp_src = 4096
+        udp_dest = 4096
+        payload = 'a' * (frame_size - 42)
 
-    # print the configuration, this makes it easy to review what we have done until now
-    print("Current ByteBlower configuration:")
-    print("port1:", port1.DescriptionGet())
-    print("port2:", port2.DescriptionGet())
+        from scapy.layers.inet import UDP, IP, Ether, Raw
+        scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
+        scapy_udp_header = UDP(dport=udp_dest, sport=udp_src)
+        scapy_ip_header = IP(src=src_ip, dst=dst_ip)
+        scapy_frame = Ether(src=src_mac, dst=dst_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
 
-    # start the traffic, clear the latency trigger.  Triggers are active as soon they are created, so
-    # we may want to clear the data it already has collected.
-    print("Starting traffic")
-    oos_trigger.ResultClear()
-    stream_history = stream.ResultHistoryGet()
-    trigger_history = oos_trigger.ResultHistoryGet()
+        frame_content = bytearray(bytes(scapy_frame))
 
-    stream.Start()
+        # The ByteBlower API expects an 'str' as input for the Frame::BytesSet(), we need to convert the bytearray
+        hexbytes = ''.join((format(b, "02x") for b in frame_content))
 
-    for iteration in range(1, 10):
-        # sleep one second
+        frame.BytesSet(hexbytes)
+
+        # Enable latency for this frame.  The frame frame contents will be altered so it contains a timestamp.
+        frame_tag = frame.FrameTagSequenceGet()
+        frame_tag.Enable(True)
+
+        # create a latency-enabled trigger.  A trigger is an object which receives data.
+        # The Basic trigger just count packets, a LatencyBasic trigger analyzes the timestamps embedded in the
+        # received frame.
+        oos_trigger = self.port_2.RxOutOfSequenceBasicAdd()
+
+        # every trigger needs to know on which frames it will work.  The default filter is no filter, so it will
+        # analyze every frame, which is not what we want here.
+        # We will filter on the destination IP and the destination UDP port
+        bpf_filter = "ip dst {} and udp port {}".format(dst_ip, udp_dest)
+        oos_trigger.FilterSet(bpf_filter)
+
+        # print the configuration, this makes it easy to review what we have done until now
+        print("Current ByteBlower configuration:")
+        print("port1:", self.port_1.DescriptionGet())
+        print("port2:", self.port_2.DescriptionGet())
+
+        # start the traffic, clear the latency trigger.  Triggers are active as soon they are created, so
+        # we may want to clear the data it already has collected.
+        print("Starting traffic")
+        oos_trigger.ResultClear()
+        stream_history = stream.ResultHistoryGet()
+        trigger_history = oos_trigger.ResultHistoryGet()
+
+        duration_ns = self.interframegap_ns * self.number_of_frames
+        duration_s = duration_ns / 1000000000 + 1
+
+        stream.Start()
+
+        for iteration in range(1, duration_s):
+            # sleep one second
+            sleep(1)
+
+            # Refresh the history, the ByteBlower server will create interval and cumulative results every
+            # second (by default).  The Refresh method will synchronize the server data with the client.
+            stream_history.Refresh()
+            trigger_history.Refresh()
+
+            last_interval_tx = stream_history.IntervalLatestGet()
+            last_interval_rx = trigger_history.IntervalLatestGet()
+
+            print("Sent {TX} frames, received {RX} frames, out of order {OOS}".format(
+                TX=last_interval_tx.PacketCountGet(),
+                RX=last_interval_rx.PacketCountGet(),
+                OOS=last_interval_rx.PacketCountOutOfSequenceGet()
+            ))
+
+        print("Done sending traffic (time elapsed)")
+
+        # Waiting for a second after the stream is finished.
+        # This has the advantage that frames that were transmitted but not received yet,
+        # can be processed by the server
+        print("Waiting for a second")
         sleep(1)
 
-        # Refresh the history, the ByteBlower server will create interval and cumulative results every
-        # second (by default).  The Refresh method will synchronize the server data with the client.
-        stream_history.Refresh()
-        trigger_history.Refresh()
+        # During the test itself we queried the interval counters, there are also cumulative counters.
+        # The last cumulative counter available in the history is also available as the Result
+        stream_result = stream.ResultGet()
+        oos_result = oos_trigger.ResultGet()
+        stream_result.Refresh()
+        print("Stream result:", stream_result.DescriptionGet())
+        oos_result.Refresh()
+        print("Out of sequence result:", oos_result.DescriptionGet())
 
-        last_interval_tx = stream_history.IntervalLatestGet()
-        last_interval_rx = trigger_history.IntervalLatestGet()
+        tx_frames = stream_result.PacketCountGet()
+        rx_frames = oos_result.PacketCountGet()
+        rx_invalid = oos_result.PacketCountInvalidGet()
+        rx_valid = oos_result.PacketCountValidGet()
+        rx_out_of_order = oos_result.PacketCountOutOfSequenceGet()
 
-        print("Sent {TX} frames, received {RX} frames, out of order {OOS}".format(
-            TX=last_interval_tx.PacketCountGet(),
-            RX=last_interval_rx.PacketCountGet(),
-            OOS=last_interval_rx.PacketCountOutOfSequenceGet()
+        print("Sent {TX} frames, received {RX} frames".format(TX=tx_frames, RX=rx_frames))
+        print("Out of Sequence (Total, invalid, valid, out_of_order): {TOT}, {INV}, {VAL}, {OOO}".format(
+            TOT=oos_result.PacketCountGet(),
+            INV=oos_result.PacketCountInvalidGet(),
+            VAL=oos_result.PacketCountValidGet(),
+            OOO=oos_result.PacketCountOutOfSequenceGet()
         ))
 
-    print("Done sending traffic (time elapsed)")
+        # It is considered good practice to clean up your objects.  This tells the ByteBlower server it can
+        # clean up its resources.
+        self.server.PortDestroy(self.port_1)
+        self.server.PortDestroy(self.port_2)
 
-    # Waiting for a second after the stream is finished.
-    # This has the advantage that frames that were transmitted but not received yet,
-    # can be processed by the server
-    print("Waiting for a second")
-    sleep(1)
+        # Disconnect from the ByteBlower server
+        byteblower_instance.ServerRemove(self.server)
 
-    # During the test itself we queried the interval counters, there are also cumulative counters.
-    # The last cumulative counter available in the history is also available as the Result
-    stream_result = stream.ResultGet()
-    oos_result = oos_trigger.ResultGet()
-    stream_result.Refresh()
-    oos_result.Refresh()
+        return [tx_frames, rx_frames, rx_valid, rx_invalid, rx_out_of_order]
 
-    print("Sent {TX} frames, received {RX} frames".format(
-        TX=stream_result.PacketCountGet(), RX=oos_result.PacketCountGet()
-    ))
-    print("Out of Sequence (Total, invalid, valid, out_of_order): {TOT}, {INV}, {VAL}, {OOO}".format(
-        TOT=oos_result.PacketCountGet(),
-        INV=oos_result.PacketCountInvalidGet(),
-        VAL=oos_result.PacketCountValidGet(),
-        OOO=oos_result.PacketCountOutOfSequenceGet()
-    ))
+    def provision_port(self, config):
+        port = self.server.PortCreate(config['interface'])
+        port_l2 = port.Layer2EthIISet()
+        port_l2.MacSet(config['mac'])
 
-    # It is considered good practice to clean up your objects.  This tells the ByteBlower server it can
-    # clean up its resources.
-    server.PortDestroy(port1)
-    server.PortDestroy(port2)
+        ip_config = config['ip']
+        if not isinstance(ip_config, list):
+            # Config is not static, DHCP or slaac
+            if ip_config.lower() == "dhcpv4":
+                port_l3 = port.Layer3IPv4Set()
+                port_l3.ProtocolDhcpGet().Perform()
+                config['ip_address'] = port_l3.IpGet()
+            elif ip_config.lower() == "dhcpv6":
+                port_l3 = port.Layer3IPv6Set()
+                port_l3.ProtocolDhcpGet().Perform()
+                config['ip_address'] = port_l3.IpDhcpGet()
+            elif ip_config.lower() == "slaac":
+                port_l3 = port.Layer3IPv6Set()
+                port_l3.StatelessAutoconfiguration()
+                config['ip_address'] = port_l3.IpStatelessGet()
+        else:
+            # Static configuration
+            if len(ip_config) == 3:
+                # IPv4
+                port_l3 = port.Layer3IPv4Set()
+                port_l3.IpSet(ip_config[0])
+                port_l3.NetmaskSet(ip_config[1])
+                port_l3.GatewaySet(ip_config[2])
+                config['ip_address'] = port_l3.IpGet()
+            elif len(ip_config) == 2:
+                port_l3 = port.Layer3IPv6Set()
+                # IPv6
+                address = ip_config[0]
+                prefix_length = ip_config[1]
+                ip = "{}/{}".format(address, prefix_length)
+                port_l3.IpManualAdd(ip)
+                config['ip_address'] = ip_config[0]
 
-    # Disconnect from the ByteBlower server
-    byteblower_instance.ServerRemove(server)
+        if not isinstance(config['ip_address'], str):
+            ip = config['ip_address'][0]
+            if '/' in ip:
+                config['ip_address'] = ip.split('/')[0]
+
+        print("Created port", port.DescriptionGet())
+        return port
 
 
-if __name__ == '__main__':
-    server_address = "byteblower-tp-2100.lab.byteblower.excentis.com"
-    interface1 = "trunk-1-13"
-    interface2 = "trunk-1-14"
-
-    run_example(server_address, interface1, interface2)
+# When this python module is called stand-alone, the run-function must be
+# called.  This approach makes it possible to include it in a series of
+# examples.
+if __name__ == "__main__":
+    Example(**configuration).run()
