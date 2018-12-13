@@ -17,9 +17,15 @@ configuration = {
     # MAC address of the ByteBlower port which will be generated
     'port_mac_address': '00:bb:01:00:00:01',
 
-    # DHCP or IP configuration for the ByteBlower port
+    # IP configuration for the ByteBlower Port.
+    # Options are
+    # * DHCP
+    # * SLAAC
+    # * static
     # if DHCP, use "dhcp"
-    'port_ip_address': 'dhcp',
+    # 'port_ip_address': 'dhcp',
+    # if SLAAC, use "slaac"
+    'port_ip_address': 'slaac',
     # if static, use ["ipaddress", prefixlength]
     # 'port_ip_address': ['3000:3128::24', '64'],
 
@@ -36,7 +42,7 @@ configuration = {
     #                       automatically select the first available wireless
     #                       endpoint.
     'wireless_endpoint_uuid': None,
-    # 'wireless_endpoint_uuid': '6d9c2347-e6c1-4eea-932e-053801de32eb',
+    # 'wireless_endpoint_uuid': 'fd9d9566-8aa3-47c3-9d4b-e597362728d1',
 
     # TCP port for the HTTP server
     'port_tcp_port': 4096,
@@ -113,10 +119,13 @@ class Example:
 
         # configure the IP addressing on the port
         port_layer3_config = self.port.Layer3IPv6Set()
-        if type(self.port_ip_address) is str and self.port_ip_address == 'dhcp':
+        if type(self.port_ip_address) is str and self.port_ip_address.lower() == 'dhcp':
             # DHCP is configured on the DHCP protocol
             dhcp_protocol = port_layer3_config.ProtocolDhcpGet()
             dhcp_protocol.Perform()
+        elif type(self.port_ip_address) is str and self.port_ip_address.lower() == 'slaac':
+            # wait for stateless autoconfiguration to complete
+            port_layer3_config.StatelessAutoconfiguration()
         else:
             # Static addressing
             address = self.port_ip_address[0]
@@ -173,9 +182,11 @@ class Example:
         # This is the IP address and port of the HTTP server configured above
         port_layer3_config = self.port.Layer3IPv6Get()
 
-        ipv6_addresses = port_layer3_config.IpStatelessGet()
+        ipv6_addresses = port_layer3_config.IpLinkLocalGet()
         if self.port_ip_address == "dhcp":
             ipv6_addresses = port_layer3_config.IpDhcpGet()
+        elif self.port_ip_address == "slaac":
+                ipv6_addresses = port_layer3_config.IpStatelessGet()
         elif isinstance(self.port_ip_address, list):
             ipv6_addresses = port_layer3_config.IpManualGet()
 
