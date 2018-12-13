@@ -172,42 +172,21 @@ class Example:
 
         request_status_value = http_client.RequestStatusGet()
 
-        tx_bytes = 0
-        rx_bytes = 0
-        avg_throughput = 0
-        min_congestion = 0
-        max_congestion = 0
+        http_session_info = http_client.HttpSessionInfoGet()
+        http_result = http_session_info.ResultGet()
+        http_result.Refresh()
 
-        if http_client_session_info.RequestMethodGet() == byteblower.HTTPRequestMethod_Get:
-            http_session_info = http_client.HttpSessionInfoGet()
-            http_result = http_session_info.ResultGet()
-            http_result.Refresh()
+        tx_bytes = http_result.TxByteCountTotalGet()
+        rx_bytes = http_result.RxByteCountTotalGet()
+        avg_throughput = http_result.AverageDataSpeedGet()
 
-            tx_bytes = http_result.TxByteCountTotalGet()
-            rx_bytes = http_result.RxByteCountTotalGet()
-            avg_throughput = http_result.AverageDataSpeedGet()
+        tcp_result = http_session_info.TcpSessionInfoGet().ResultGet()
+        tcp_result.Refresh()
 
-            tcp_result = http_session_info.TcpSessionInfoGet().ResultGet()
-            tcp_result.Refresh()
+        min_congestion = tcp_result.CongestionWindowMinimumGet()
+        max_congestion = tcp_result.CongestionWindowMaximumGet()
 
-            min_congestion = tcp_result.CongestionWindowMinimumGet()
-            max_congestion = tcp_result.CongestionWindowMaximumGet()
-
-        elif http_client_session_info.RequestMethodGet() == byteblower.HTTPRequestMethod_Get:
-            http_session_info = http_server.HttpSessionInfoGet(http_client.ServerClientIdGet())
-            http_result = http_session_info.ResultGet()
-            http_result.Refresh()
-
-            tx_bytes = http_result.TxByteCountTotalGet()
-            rx_bytes = http_result.RxByteCountTotalGet()
-            avg_throughput = http_result.AverageDataSpeedGet()
-
-            tcp_result = http_session_info.TcpSessionInfoGet().ResultGet()
-            tcp_result.Refresh()
-
-            min_congestion = tcp_result.CongestionWindowMinimumGet()
-            max_congestion = tcp_result.CongestionWindowMaximumGet()
-
+        byteblower_instance.ServerRemove(self.server)
         print("Requested Payload Size: {} bytes".format(self.request_size))
         print("Requested Duration    : {} nanoseconds".format(self.duration))
         print("TX Payload            : {} bytes".format(tx_bytes))
@@ -218,7 +197,7 @@ class Example:
         print("Status                : {}".format(byteblower.ConvertHTTPRequestStatusToString(request_status_value)))
 
         return [self.request_size, self.duration,
-                tx_bytes, rx_bytes, avg_throughput, min_congestion, max_congestion, request_status_value]
+                tx_bytes, rx_bytes, avg_throughput.toString(), min_congestion, max_congestion, request_status_value]
 
     def provision_port(self, config):
         port = self.server.PortCreate(config['interface'])
