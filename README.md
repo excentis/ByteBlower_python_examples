@@ -13,5 +13,10 @@ This repository contains all public available Python examples on how to use the 
 - scapy: `pip install scapy`
 
 
+## Loading and using the ByteBlower API
+To load the ByteBlower API into python use following import statement
+`from byteblowerll.byteblower import ByteBlower`
+
+
 
 If you have requests, or missing an example, don't hesitate to ask us at support.byteblower@excentis.com
