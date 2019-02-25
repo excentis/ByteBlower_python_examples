@@ -12,6 +12,8 @@ This repository contains all public available Python examples on how to use the 
 - ByteBlower Python API : http://setup.byteblower.com/software.html#API
 - scapy: `pip install scapy`
 
+    warning: when using scapy >2.4.0 on Windows 10: scapy cannot find NPCAP
+
 
 ## Loading and using the ByteBlower API
 To load the ByteBlower API into python use following import statement
