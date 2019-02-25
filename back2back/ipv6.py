@@ -5,7 +5,7 @@ All examples are garanteed to work with Python 2.7 and above
 Copyright 2018, Excentis N.V.
 """
 
-from __future__ import print_function
+from __future__ import print_function, division
 from byteblowerll.byteblower import ByteBlower
 
 from time import sleep
@@ -147,7 +147,8 @@ class Example:
 
         stream.Start()
 
-        for iteration in range(1, duration_s):
+        # duration_s is a float, so we need to cast it to an integer first
+        for iteration in range(1, int(duration_s)):
             # sleep one second
             sleep(1)
 
