@@ -5,7 +5,7 @@ All examples are garanteed to work with Python 2.7 and above
 Copyright 2018, Excentis N.V.
 """
 
-from __future__ import print_function, division
+from __future__ import print_function
 from byteblowerll.byteblower import ByteBlower
 from time import sleep
 
