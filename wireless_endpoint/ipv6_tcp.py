@@ -247,7 +247,7 @@ class Example:
         collected_results = self.collect_results(http_hist)
 
         cumulative_result = http_hist.CumulativeLatestGet()
-        mbit_s = cumulative_result.AverageDataSpeedGet().bitrate() / 1e6
+        mbit_s = cumulative_result.AverageDataSpeedGet().MbpsGet()
 
         print("Average throughput", mbit_s, "Mbps")
 
@@ -297,7 +297,7 @@ class Example:
         cumulative_samples = []
         if http_hist.CumulativeLengthGet() > 0:
             last_cumul = http_hist.CumulativeLatestGet()
-            mbit_s = last_cumul.AverageDataSpeedGet().bitrate() / 1e6
+            mbit_s = last_cumul.AverageDataSpeedGet().MbpsGet()
             uploaded = last_cumul.TxByteCountTotalGet()
             downloaded = last_cumul.RxByteCountTotalGet()
             timestamp = last_cumul.TimestampGet()
