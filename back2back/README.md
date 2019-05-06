@@ -1,10 +1,11 @@
 # ByteBlower port examples
+These examples show how to configure traffic between two ByteBlower ports.
 
 - ipv4.py
 
   Straightforward IPv4 frameblasting test.
 
-- ipvs_latency.py
+- ipv4_latency.py
 
   Demonstrates the use of latency measurements with ByteBlower ports.  The example is IPv4 only,
   but the IPv6 implementation is analogous.  Please refer to the basic IPv6 examples for how to

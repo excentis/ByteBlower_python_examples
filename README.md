@@ -5,7 +5,8 @@ This repository contains all public available Python examples on how to use the 
 
 
 ## Folder structure
-- back2back : back2back examples
+- back2back : examples between two ByteBlower ports.
+- wireless_endpoint : Examples of using the Wireless Endpoint.
 
 
 ## Dependencies
