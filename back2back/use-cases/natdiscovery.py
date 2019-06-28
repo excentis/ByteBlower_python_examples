@@ -59,7 +59,7 @@ sc_frame = (Ether(src=LAN_MAC, dst=resolved_mac) /
             'Excentis NAT Discovery packet')
 
 frameContent = bytearray(bytes(sc_frame))
-hexbytes = ''.join( ( format(b, "02x") for b in frameContent ))
+hexbytes = ''.join((format(b, "02x") for b in frameContent))
 
 # Prepare for receiving the response 
 cap = wan_port.RxCaptureBasicAdd()
@@ -69,7 +69,7 @@ cap.Start()
 # Send a single Probing frame. 
 bb_frame.BytesSet(hexbytes)
 stream.NumberOfFramesSet(1)
-stream.InterFrameGapSet(1000 * 1000) # 1 millisecond in nanos.
+stream.InterFrameGapSet(1000 * 1000)  # 1 millisecond in nanos.
 
 stream.Start()
 
@@ -95,7 +95,7 @@ for f in sniffed.FramesGet():
     raw = Ether(data)
     if IP in raw:
         discovered_ip = raw['IP'].getfieldval('src')
-        print('Discovered IP: %s' % (discovered_ip))
+        print('Discovered IP: %s' % discovered_ip)
         break
 else:       
     print('No packet received')
