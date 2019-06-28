@@ -8,25 +8,26 @@
 
     We assume that the ByteBlowers are configured through DHCP.
 """
+
 import byteblowerll.byteblower as byteblower
 from scapy.all import *
 import time
 
-## Minimal config parameters.
-## Adapt to your setup.when necessary. 
-SERVER_ADDRESS= 'byteblower-tutorial-1300.lab.byteblower.excentis.com'
+# Minimal config parameters.
+# Adapt to your setup.when necessary.
+SERVER_ADDRESS = 'byteblower-tutorial-1300.lab.byteblower.excentis.com'
 
 UDP_SRC_PORT = 9000
 UDP_DEST_PORT = 1000
 
-WAN_MAC= '00:BB:23:22:55:12'
+WAN_MAC = '00:BB:23:22:55:12'
 WAN_BB_INTERFACE = 'nontrunk-1'
 
-LAN_MAC= '00:BB:23:21:55:13'
+LAN_MAC = '00:BB:23:21:55:13'
 LAN_BB_INTERFACE = 'trunk-1-45'
 
 
-## ByteBlower part of the test.    
+# ByteBlower part of the test.
 api = byteblower.ByteBlower.InstanceGet()
 server = api.ServerAdd(SERVER_ADDRESS)
 

@@ -24,7 +24,7 @@ if len(sys.argv) != 4:
 
 bb_server_address, bb_interface, capture_filename = sys.argv[1:]
 
-## ByteBlower part.
+# ByteBlower part.
 api = byteblower.ByteBlower.InstanceGet()
 server = api.ServerAdd(bb_server_address)
 

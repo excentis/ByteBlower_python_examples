@@ -26,7 +26,7 @@ if len(sys.argv) != 4:
 
 bb_server_address, bb_interface, query = sys.argv[1:]
 
-## ByteBlower part.
+# ByteBlower part.
 api = byteblower.ByteBlower.InstanceGet()
 server = api.ServerAdd(bb_server_address)
 
@@ -49,7 +49,7 @@ stream = port.TxStreamAdd()
 bb_frame = stream.FrameAdd()
 sc_frame = Ether(src=port_mac, dst=resolved_mac) / IP(src=my_ip, dst=dns_server)/UDP(dport=53)/DNS(rd=1,qd=DNSQR(qname=query))
 frameContent = bytearray(bytes(sc_frame))
-hexbytes = ''.join( ( format(b, "02x") for b in frameContent ) )
+hexbytes = ''.join((format(b, "02x") for b in frameContent))
 
 # Prepare for receiving the response 
 cap = port.RxCaptureBasicAdd()
