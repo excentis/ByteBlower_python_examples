@@ -102,7 +102,8 @@ class Example:
         udp_dest = 4096
         payload = 'a' * (frame_size - 42)
 
-        from scapy.layers.inet import UDP, IP, Ether, Raw
+        from scapy.layers.inet import UDP, IP, Ether
+        from scapy.all import Raw
         scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
         scapy_udp_header = UDP(dport=udp_dest, sport=udp_src)
         scapy_ip_header = IP(src=src_ip, dst=dst_ip)

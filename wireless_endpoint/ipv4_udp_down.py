@@ -147,7 +147,8 @@ class Example:
 
         payload = 'a' * (self.frame_size - 42)
 
-        from scapy.layers.inet import UDP, IP, Ether, Raw
+        from scapy.layers.inet import UDP, IP, Ether
+        from scapy.all import Raw
         scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
         scapy_udp_header = UDP(dport=self.udp_dstport, sport=self.udp_srcport)
         scapy_ip_header = IP(src=port_ipv4, dst=wireless_endpoint_ipv4)
