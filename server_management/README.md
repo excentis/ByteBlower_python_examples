@@ -1,5 +1,7 @@
 # Server management examples 
 
-Quite a bit of the current state of the ByteBlower Server can be
-retrieved through the ByteBlower API. That is what these examples
-are all about.
+You can get a lot info out of your ByteBlower Server thorugh 
+the API. This folder has examples to:
+
+* Who's using the ByteBlower Server.
+* What version does the server run.
