@@ -15,9 +15,6 @@
         trunk-1-15, 'excentis@laptop-030'
         trunk-1-45, 'excentis@laptop-030'
 
-
-    
-
 """    
 
 import byteblowerll.byteblower as byteblower
@@ -26,7 +23,7 @@ import sys
 if len(sys.argv) == 2:
     SERVER_ADDRESS = sys.argv[1]
 else:
-    print("Expected arguments: %s <ByteBlower-server>" % sys.argv[0])
+    print("Expected argument: %s <ByteBlower-server>" % sys.argv[0])
     sys.exit(-1)
 
 bb = byteblower.ByteBlower.InstanceGet()
