@@ -7,6 +7,7 @@ This repository contains all public available Python examples on how to use the 
 ## Folder structure
 - back2back : examples between two ByteBlower ports.
 - wireless_endpoint : Examples of using the Wireless Endpoint.
+- server_management: No traffic is sent in these examples, they show how to get info from the ByteBlower Server and Meeting point.
 
 
 ## Dependencies
