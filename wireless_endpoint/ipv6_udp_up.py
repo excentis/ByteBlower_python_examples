@@ -9,12 +9,12 @@ from __future__ import print_function
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower
 
-# We will use scapy to build the frames, scapy will be imported when needed.
+from scapy.packet import Raw
 
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
+    'server_address': 'byteblower-tp-2100.lab.byteblower.excentis.com',
 
     # Interface on the server to create a port on.
     'server_interface': 'trunk-1-13',
@@ -44,7 +44,7 @@ configuration = {
     # Special value: None.  When the UUID is set to None, the example will automatically select the first available
     # wireless endpoint.
     'wireless_endpoint_uuid': None,
-    'wireless_endpoint_uuid': 'fd9d9566-8aa3-47c3-9d4b-e597362728d1',
+    # 'wireless_endpoint_uuid': 'fd9d9566-8aa3-47c3-9d4b-e597362728d1',
 
     # Name of the traffic interface of the ByteBlower wireless endpoint.
     # only needed when the Wireless endpoint has multiple interfaces with IPv6 addresses. (e.g. The wireless endpoint
@@ -164,7 +164,6 @@ class Example:
 
         payload = 'a' * (self.frame_size - 42)
 
-        from scapy.layers.inet import Raw
         scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
 
         payload_array = bytearray(bytes(scapy_udp_payload))
