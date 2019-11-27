@@ -1,8 +1,8 @@
 #!/usr/bin/python
 """"
-This example allows the user to configure a frameblasting flow which transmits data to the wireless endpoint.
+This example allows the user to collect network information over time on a
+Wireless Endpoint.
 
-WirelessEndpoint --> ByteBlowerPort
 """
 
 from __future__ import print_function
