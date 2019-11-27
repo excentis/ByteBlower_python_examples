@@ -237,6 +237,15 @@ class Example:
         self.wireless_endpoint.Lock(False)
         return collected_results
 
+    def cleanup(self):
+        instance = ByteBlower.InstanceGet()
+
+        # Cleanup
+        if self.meetingpoint is not None:
+            instance.MeetingPointRemove(self.meetingpoint)
+        if self.server is not None:
+            instance.ServerRemove(self.server)
+
     def select_wireless_endpoint_uuid(self):
         """
         Walk over all known devices on the meetingpoint.
@@ -309,7 +318,11 @@ def make_csv_line(we_uuid, we_name, *items):
 
 
 if __name__ == '__main__':
-    results = Example(**configuration).run()
+    example = Example(**configuration)
+    try:
+        results = example.run()
+    finally:
+        example.cleanup()
 
     # Write the results to CSV files, those can be analyzed later.
     uuid = results['we']['uuid']

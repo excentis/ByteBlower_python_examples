@@ -194,6 +194,10 @@ class Example:
         print("Waiting for the test to finish")
         sleep(duration_ns / 1000000000.0)
 
+        print("Wait for the device to beat")
+        # Usually one second
+        sleep(1)
+
         # get the results from the wireless endpoint
         self.wireless_endpoint.ResultGet()
 
@@ -204,13 +208,24 @@ class Example:
         rx_result = trigger.ResultGet()
         rx_result.Refresh()
 
-        print("Transmitted", tx_result.PacketCountGet(), "packets")
-        print("Received   ", rx_result.PacketCountGet(), "packets")
+        tx_packets = tx_result.PacketCountGet()
+        rx_packets = rx_result.PacketCountGet()
+        print("Transmitted", tx_packets, "packets")
+        print("Received   ", rx_packets, "packets")
 
         return {
-            'tx': tx_result.PacketCountGet(),
-            'rx': rx_result.PacketCountGet()
+            'tx': tx_packets,
+            'rx': rx_packets
         }
+
+    def cleanup(self):
+        instance = ByteBlower.InstanceGet()
+
+        # Cleanup
+        if self.meetingpoint is not None:
+            instance.MeetingPointRemove(self.meetingpoint)
+        if self.server is not None:
+            instance.ServerRemove(self.server)
 
     def select_wireless_endpoint_uuid(self):
         """
@@ -224,11 +239,19 @@ class Example:
             # is the status Available?
             if device.StatusGet() == DeviceStatus_Available:
                 # yes, return the UUID
+                print("Selecting device", device.DeviceIdentifierGet())
                 return device.DeviceIdentifierGet()
+
+            print("Not selecting device", device.DeviceIdentifierGet())
+            print(device.DescriptionGet())
 
         # No device found, return None
         return None
 
 
 if __name__ == '__main__':
-    Example(**configuration).run()
+    example = Example(**configuration)
+    try:
+        example.run()
+    finally:
+        example.cleanup()
