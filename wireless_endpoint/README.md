@@ -30,3 +30,15 @@
   Uses a Wireless endpoint to transmit IPv6 traffic and a ByteBlower server to receive traffic.  
   It explains how to set up a stream on a Wireless Endpoint and setting up a Trigger on a ByteBlower port.
 
+- networkinfo.py
+
+  Explains the use of the NetworkInfo object.  
+  
+- networkinfomonitory.py
+
+  Explains the general use of the NetworkInfoMonitor object
+  
+- rssi_vs_throughput.py
+
+  Uses a wireless endpoint to map the possible TCP throughput on the RSSI reported by the device.
+  Stores the collected information in a CSV file.
