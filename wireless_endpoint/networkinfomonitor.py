@@ -131,14 +131,15 @@ class Example:
 
             results.append(result)
 
-        with open("network_info_monitor_test.csv", "w") as f:
-            f.write(";".join(headers) + '\n')
-            for result in results:
-                f.write(";".join([str(item) for item in result]) + '\n')
-        print("results written to network_info_monitor_test.csv")
-
         self.wireless_endpoint.Lock(False)
-        instance.MeetingPointRemove(self.meetingpoint)
+
+        return headers, results
+
+    def cleanup(self):
+        instance = ByteBlower.InstanceGet()
+
+        if self.meetingpoint is not None:
+            instance.MeetingPointRemove(self.meetingpoint)
 
     def select_wireless_endpoint_uuid(self):
         """
@@ -159,4 +160,16 @@ class Example:
 
 
 if __name__ == '__main__':
-    Example(**configuration).run()
+    example = Example(**configuration)
+
+    try:
+        headers, results = example.run()
+    finally:
+        example.cleanup()
+
+    with open("network_info_monitor_test.csv", "w") as f:
+        f.write(";".join(headers) + '\n')
+        for result in results:
+            f.write(";".join([str(item) for item in result]) + '\n')
+    print("results written to network_info_monitor_test.csv")
+
