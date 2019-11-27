@@ -261,6 +261,15 @@ class Example:
             'rx': rx_result.PacketCountGet()
         }
 
+    def cleanup(self):
+        instance = ByteBlower.InstanceGet()
+
+        # Cleanup
+        if self.meetingpoint is not None:
+            instance.MeetingPointRemove(self.meetingpoint)
+        if self.server is not None:
+            instance.ServerRemove(self.server)
+
     def select_wireless_endpoint_uuid(self):
         """
         Walk over all known devices on the meetingpoint.
@@ -294,4 +303,8 @@ class Example:
 
 
 if __name__ == '__main__':
-    Example(**configuration).run()
+    example = Example(**configuration)
+    try:
+        example.run()
+    finally:
+        example.cleanup()
