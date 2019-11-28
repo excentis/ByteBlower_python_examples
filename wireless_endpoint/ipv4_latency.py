@@ -243,10 +243,16 @@ class Example:
         self.server.PortDestroy(self.port)
         self.wireless_endpoint.Lock(False)
 
-        # Disconnect from the ByteBlower server
-        byteblower_instance.ServerRemove(self.server)
+        return [tx_frames, rx_frames, latency_min, latency_avg, latency_max, jitter]
 
-        return [tx_frames, latency_min, latency_avg, latency_max, jitter]
+    def cleanup(self):
+        instance = ByteBlower.InstanceGet()
+
+        # Cleanup
+        if self.meetingpoint is not None:
+            instance.MeetingPointRemove(self.meetingpoint)
+        if self.server is not None:
+            instance.ServerRemove(self.server)
 
     def select_wireless_endpoint_uuid(self):
         """
@@ -270,10 +276,10 @@ class Example:
 # called.  This approach makes it possible to include it in a series of
 # examples.
 if __name__ == "__main__":
+    example = Example(**configuration)
     try:
-        Example(**configuration).run()
-    except Exception as e:
-        exceptionMessage = e
-        print("exception")
-        print(dir(e))
-        print(str(e))
+        output = example.run()
+
+        print("TX: {}, RX: {}, Latency (min, avg, max, jitter) ({}, {}, {}, {})", *output)
+    finally:
+        example.cleanup()
