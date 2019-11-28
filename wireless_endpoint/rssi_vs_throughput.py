@@ -7,7 +7,7 @@ import time
 import random
 import datetime
 
-from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved
+from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved, ConfigError
 import os
 import sys
 
@@ -251,15 +251,25 @@ class Example:
         # We will store results in a list, containing dicts
         # { 'timestamp': ... , 'SSID': ... , 'BSSID': ... , 'throughput': ...
         results = []
+
         for network_info_interval in network_info_history.IntervalGet():
-            timestamp = network_info_interval.TimestampGet()
-
             # Find the corresponding HTTP snapshot
-            http_interval = http_hist.IntervalGetByTime(timestamp)
+            timestamp = network_info_interval.TimestampGet()
+            try:
+                http_interval = http_hist.IntervalGetByTime(timestamp)
+                # Get the average througput for this interval
+                # type is byteblowerll.byteblower.DataRate
+                rate = http_interval.AverageDataSpeedGet()
 
-            # Get the average througput for this interval
-            # type is byteblowerll.byteblower.DataRate
-            rate = http_interval.AverageDataSpeedGet()
+                rate_bps = rate.bitrate()
+
+            except ConfigError as e:
+                print("Couldn't fetch Throughput snapshot for timestamp", timestamp)
+                print("Number of NetworkInfo snapshots:", network_info_history.IntervalLengthGet())
+                print("Number of HTTP snapshots:", http_hist.IntervalLengthGet())
+                print("ConfigError:", e.what())
+
+                rate_bps = 0
 
             # Get the interfaces stored in this interval
             interfaces = network_info_interval.InterfaceGet()
@@ -268,7 +278,7 @@ class Example:
 
             result = {
                 'timestamp': human_readable_date(int(timestamp)),
-                'throughput': int(rate.bitrate()),
+                'throughput': int(rate_bps),
 
                 # Default values
                 'SSID': 'Unknown',
@@ -291,6 +301,15 @@ class Example:
         self.server.PortDestroy(self.port)
         self.wireless_endpoint.Lock(False)
         return results
+
+    def cleanup(self):
+        instance = ByteBlower.InstanceGet()
+
+        # Cleanup
+        if self.meetingpoint is not None:
+            instance.MeetingPointRemove(self.meetingpoint)
+        if self.server is not None:
+            instance.ServerRemove(self.server)
 
     def find_wifi_interface(self, interface_list):
         """"Looks for the wireless interface
@@ -379,12 +398,10 @@ def write_csv(result_list, filename, first_key, separator=';'):
 
 if __name__ == '__main__':
     example = Example(**configuration)
-    example_results = example.run()
-
-    print("Removing connection to server")
-    ByteBlower.InstanceGet().ServerRemove(example.server)
-    print("Removing connection to meetingpoint")
-    ByteBlower.InstanceGet().MeetingPointRemove(example.meetingpoint)
+    try:
+        example_results = example.run()
+    finally:
+        example.cleanup()
 
     print("Storing the results")
     results_file = os.path.basename(__file__) + ".csv"
