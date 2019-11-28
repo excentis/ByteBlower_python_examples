@@ -277,7 +277,7 @@ class Example:
             network_interface = self.find_wifi_interface(interfaces)
 
             result = {
-                'timestamp': human_readable_date(int(timestamp)),
+                'timestamp': timestamp,
                 'throughput': int(rate_bps),
 
                 # Default values
@@ -388,6 +388,9 @@ def write_csv(result_list, filename, first_key, separator=';'):
             items = []
             for key in keys:
                 item = result[key]
+
+                if key == 'timestamp':
+                    item = human_readable_date(int(item))
 
                 if isinstance(item, str):
                     item = '"' + item + '"'

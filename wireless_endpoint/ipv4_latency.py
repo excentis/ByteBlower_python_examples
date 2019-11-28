@@ -7,7 +7,6 @@ Copyright 2018, Excentis N.V.
 
 from __future__ import print_function
 from byteblowerll.byteblower import ByteBlower
-from time import sleep
 
 
 configuration = {
@@ -35,7 +34,7 @@ configuration = {
     # configured by meetingpoint_address.
     # Special value: None.  When the UUID is set to None, the example will automatically select the first available
     # wireless endpoint.
-     #'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
+    # 'wireless_endpoint_uuid': None,
     'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
 
     # Size of the frame on ethernet level. Do not include the CRC
@@ -143,11 +142,9 @@ class Example:
         latency_trigger.FilterUdpDestinationPortSet(self.udp_dstport)
         latency_trigger.FilterSourceAddressSet(port_ipv4)
 
-
         stream = self.port.TxStreamAdd()
         stream.InterFrameGapSet(self.interframe_gap_nanoseconds)
         stream.NumberOfFramesSet(self.number_of_frames)
-
 
         from scapy.layers.inet import UDP, IP, Ether
         from scapy.all import Raw
@@ -179,7 +176,6 @@ class Example:
         print("Current ByteBlower configuration:")
         print("port:", self.port.DescriptionGet())
         print("wireless endpoint:", self.wireless_endpoint.DescriptionGet())
-
 
         # start the traffic, clear the latency trigger.  Triggers are active as soon they are created, so
         # we may want to clear the data it already has collected.
@@ -249,9 +245,8 @@ class Example:
 
         # Disconnect from the ByteBlower server
         byteblower_instance.ServerRemove(self.server)
-        #rx_frames
-        return [tx_frames, latency_min, latency_avg, latency_max, jitter]
 
+        return [tx_frames, latency_min, latency_avg, latency_max, jitter]
 
     def select_wireless_endpoint_uuid(self):
         """
@@ -269,6 +264,7 @@ class Example:
 
         # No device found, return None
         return None
+
 
 # When this python module is called stand-alone, the run-function must be
 # called.  This approach makes it possible to include it in a series of
