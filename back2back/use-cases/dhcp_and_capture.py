@@ -19,7 +19,7 @@ if len(sys.argv) != 4:
        <ByteBlower Server Address> <ByteBlower Interface> <filename to save to> 
        It received: %s""" % sys.argv[1:]
     print(help_txt)    
-    sys.exit(-1)
+    sys.exit(1)
 
 
 bb_server_address, bb_interface, capture_filename = sys.argv[1:]
