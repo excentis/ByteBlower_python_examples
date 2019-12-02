@@ -14,7 +14,7 @@ from scapy.all import *
 import time
 
 # Minimal config parameters.
-# Adapt to your setup.when necessary.
+# Adapt to your setup when necessary.
 SERVER_ADDRESS = 'byteblower-tutorial-1300.lab.byteblower.excentis.com'
 
 UDP_SRC_PORT = 9000

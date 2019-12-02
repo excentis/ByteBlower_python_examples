@@ -1,31 +1,43 @@
 #!/usr/bin/python
+from __future__ import print_function
 import byteblowerll.byteblower as byteblower
 import sys
 
 
-try:
+if __name__ == '__main__':
+    server_address = "byteblower-tutorial-1300.lab.byteblower.excentis.com"
+    server = None
+    meetingpoint = None
+
+    if len(sys.argv) == 2:
+        server_address = sys.argv[1]
+
     bb = byteblower.ByteBlower.InstanceGet()
-    bbServer = byteblower.ByteBlower.InstanceGet().ServerAdd(sys.argv[1])
-    meetingPoint = bb.MeetingPointAdd("byteblower-tutorial-1300.lab.byteblower.excentis.com")
 
-    print("server users: ")
-    for user in bbServer.UsersGet():
-        print(user.NameGet())
+    try:
+        server = bb.ServerAdd(server_address)
+        meetingPoint = bb.MeetingPointAdd(server_address)
 
-    print("meeting point users: ")
-    for user in meetingPoint.UsersGet():
-        print(user.NameGet())
+        print("server users: ")
+        for user in server.UsersGet():
+            print(user.NameGet())
 
+        print("meeting point users: ")
+        for user in meetingPoint.UsersGet():
+            print(user.NameGet())
 
+    except byteblower.DomainError as e:
+        print("Caught DomainError: " + e.getMessage())
 
+    except byteblower.TechnicalError as e:
+        print("Caught TechnicalError: " + e.getMessage())
 
+    except Exception as e:
+        print(e.message)
 
+    finally:
+        if server is not None:
+            bb.ServerRemove(server)
 
-except byteblower.DomainError as e:
-    print "Caught DomainError: " + e.getMessage()
-
-except byteblower.TechnicalError as e:
-    print "Caught TechnicalError: " + e.getMessage()
-
-except Exception as e:
-    print(e.message)
+        if meetingpoint is not None:
+            bb.MeetingPointRemove(meetingpoint)
