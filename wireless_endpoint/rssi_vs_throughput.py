@@ -14,10 +14,10 @@ import sys
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': '10.10.1.204',
+    'server_address': '10.10.1.202',
 
     # Interface on the server to create a port on.
-    'server_interface': 'nontrunk-1',
+    'server_interface': 'trunk-1-2',
 
     # MAC address of the ByteBlower port which will be generated
     'port_mac_address': '00:bb:01:00:00:01',
@@ -45,7 +45,7 @@ configuration = {
 
     # Name of the WiFi interface to query.
     # Special value: None.  None will search for an interface with type WiFi.
-    # 'wireless_interface': None
+    # 'wireless_interface': None,
     'wireless_interface': 'wlan0',
 
     # TCP port for the HTTP server
@@ -65,7 +65,7 @@ configuration = {
     # duration, in nanoseconds
     # Duration of the session
     #           sec  milli  micro  nano
-    'duration': 60 * 1000 * 1000 * 1000,
+    'duration': 30 * 1000 * 1000 * 1000,
 
     # TOS value to use on the HTTP client (and server)
     'tos': 0
@@ -399,10 +399,44 @@ def write_csv(result_list, filename, first_key, separator=';'):
             f.write(separator.join(items) + "\n")
 
 
+def plot_data(device_name, data):
+    timestamps = []
+    rssis = []
+    throughputs = []
+
+    for item in data:
+        timestamps.append(item['timestamp'] / 1000000000)
+        throughputs.append(item['throughput'] / 1000000.0)
+        rssis.append(item['RSSI'])
+
+    min_ts = min(timestamps)
+    x_labels = [x - min_ts for x in timestamps]
+
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    fig, ax1 = plt.subplots()
+    ax1.set_title(device_name + " Throughput vs RSSI over time")
+    ax1.plot(x_labels, throughputs, 'r')
+    ax1.set_ylabel('Throughput (Mbps)', color="red")
+    ax1.set_xlabel('Time')
+
+    ax2 = ax1.twinx()
+
+    ax2.plot(x_labels, rssis, 'b')
+    ax2.set_ylabel('RSSI (dBm)', color="blue")
+
+    fig.tight_layout()
+    fig.savefig(os.path.basename(__file__) + ".png")
+
+
 if __name__ == '__main__':
     example = Example(**configuration)
+    device_name = "Unknown"
     try:
         example_results = example.run()
+        device_name = example.wireless_endpoint.DeviceInfoGet().GivenNameGet()
     finally:
         example.cleanup()
 
@@ -410,5 +444,7 @@ if __name__ == '__main__':
     results_file = os.path.basename(__file__) + ".csv"
     write_csv(example_results, filename=results_file, first_key='timestamp')
     print("Results written to", results_file)
+
+    plot_data(device_name, example_results)
 
     sys.exit(0)
