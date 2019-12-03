@@ -377,15 +377,22 @@ def write_csv(result_list, filename, first_key, separator=';'):
     # We use the first item to collect our headers
     first_result = result_list[0]
 
-    keys = first_result.keys()
+    # Make sure the first key in the list is the key we want to be the first.
+    keys = list(first_result.keys())
     keys.remove(first_key)
     keys.insert(0, first_key)
 
     with open(filename, 'w') as f:
+        # Write the headers
         f.write(separator.join(['"' + key + '"' for key in keys]) + "\n")
 
+        # Write the results
         for result in result_list:
             items = []
+
+            # format the result items,
+            # strings will be quoted,
+            # timestamps will be human readable dates
             for key in keys:
                 item = result[key]
 
@@ -394,8 +401,10 @@ def write_csv(result_list, filename, first_key, separator=';'):
 
                 if isinstance(item, str):
                     item = '"' + item + '"'
+
                 items.append(str(item))
 
+            # Write the result
             f.write(separator.join(items) + "\n")
 
 
