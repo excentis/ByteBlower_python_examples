@@ -400,34 +400,53 @@ def write_csv(result_list, filename, first_key, separator=';'):
 
 
 def plot_data(device_name, data):
+    """
+    Plots the data collected by the example using matplotlib
+    :param device_name: Name of the device
+    :param data: The data returned by the example
+    """
+
     timestamps = []
     rssis = []
     throughputs = []
 
+    # Reformat the example data for use in the graphics
     for item in data:
         timestamps.append(item['timestamp'] / 1000000000)
         throughputs.append(item['throughput'] / 1000000.0)
         rssis.append(item['RSSI'])
 
+    # Reformat the timestamps so we have timestamps since the start of
+    # the example
     min_ts = min(timestamps)
     x_labels = [x - min_ts for x in timestamps]
 
+    # Do the magic, start with importing matplotlib
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
+    # Get the default figure and axis
     fig, ax1 = plt.subplots()
+
+    # Set the title of the graph
     ax1.set_title(device_name + " Throughput vs RSSI over time")
+
+    # Plot the throughput on the default axis, in the color red
     ax1.plot(x_labels, throughputs, 'r')
     ax1.set_ylabel('Throughput (Mbps)', color="red")
     ax1.set_xlabel('Time')
 
+    # Add another Y axis, which uses the same X axis
     ax2 = ax1.twinx()
 
+    # Plot the RSSI on the new axis, color is blue
     ax2.plot(x_labels, rssis, 'b')
     ax2.set_ylabel('RSSI (dBm)', color="blue")
 
+    # Crop the image
     fig.tight_layout()
+    # Save the image
     fig.savefig(os.path.basename(__file__) + ".png")
 
 
