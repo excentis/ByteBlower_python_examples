@@ -1,15 +1,24 @@
 """
-Basic IPv4 frameblasting example for the ByteBlower Python API.
-All examples are garanteed to work with Python 2.7 and above
+This examples builds on the basic IPv4 example. In this example
+you can configure a VLAN at transmitting and receiving end. Both
+sides can have a different config.
 
-Copyright 2018, Excentis N.V.
+The goal is to teach the impact of the VLAN on various parts of
+the code. We do suggest to first get familiar with the basic IPv4
+example.
+
+For simplicity we won't show VLAN stacks (i.e. VLANs embedded in
+another VLAN). It's a small addition to this script, we suggest 
+to try it yourself, but don't hesitate to contact us at
+support.byteblower@excentis.com for help.
+
+Copyright 2019, Excentis N.V.
 """
 
 from __future__ import print_function
 from byteblowerll.byteblower import ByteBlower
 
 from time import sleep
-
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -19,6 +28,10 @@ configuration = {
     'port_1_config': {
         'interface': 'trunk-1-13',
         'mac': '00:bb:01:00:00:01',
+
+        # If this port requires a VLAN, add it as as follows.
+        # 'vlan': 10
+
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
@@ -31,6 +44,9 @@ configuration = {
     'port_2_config': {
         'interface': 'trunk-1-20',
         'mac': '00:bb:01:00:00:02',
+
+i       # VLAN can be configured optionally.
+        'vlan:' 2,
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
