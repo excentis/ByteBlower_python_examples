@@ -7,17 +7,25 @@ WirelessEndpoint --> ByteBlowerPort
 
 from __future__ import print_function
 # We want to use the ByteBlower python API, so import it
-from byteblowerll.byteblower import ByteBlower
+from byteblowerll.byteblower import ByteBlower, ConfigError
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from scapy.packet import Raw
+import datetime
+import os
 
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': 'byteblower-tp-2100.lab.byteblower.excentis.com',
+    # 'server_address': 'byteblower-tp-2100.lab.byteblower.excentis.com',
+    'server_address': '10.10.1.202',
 
     # Interface on the server to create a port on.
-    'server_interface': 'nontrunk-1',
+    # 'server_interface': 'nontrunk-1',
+    'server_interface': 'trunk-1-1',
 
     # MAC address of the ByteBlower port which will be generated
     'port_mac_address': '00:bb:01:00:00:01',
@@ -46,13 +54,15 @@ configuration = {
     'wireless_interface': 'wlan0',
 
     # Size of the frame on ethernet level. Do not include the CRC
-    'frame_size': 252,
+    'frame_size': 1024,
 
-    # Number of frames to send.
-    'number_of_frames': 1000,
+    # Number of frames per second
+    'frames_per_second': 50000,
 
-    # How fast must the frames be sent.  e.g. every 10 milliseconds (=10000000 nanoseconds)
-    'interframe_gap_nanoseconds': 10000000,
+    # duration, in nanoseconds
+    # Duration of the session
+    #           sec  milli  micro  nano
+    'duration': 60 * 1000 * 1000 * 1000,
 
     'udp_srcport': 4096,
     'udp_dstport': 4096,
@@ -74,8 +84,8 @@ class Example:
         self.wireless_interface = kwargs['wireless_interface']
 
         self.frame_size = kwargs['frame_size']
-        self.number_of_frames = kwargs['number_of_frames']
-        self.interframe_gap_nanoseconds = kwargs['interframe_gap_nanoseconds']
+        self.duration = kwargs['duration']
+        self.interframe_gap_nanoseconds = int(1.0 * 1000 * 1000 * 1000 / kwargs['frames_per_second'])
         self.udp_srcport = kwargs['udp_srcport']
         self.udp_dstport = kwargs['udp_dstport']
 
@@ -130,7 +140,8 @@ class Example:
 
         stream = self.wireless_endpoint.TxStreamAdd()
         stream.InterFrameGapSet(self.interframe_gap_nanoseconds)
-        stream.NumberOfFramesSet(self.number_of_frames)
+        number_of_frames = int(self.duration / self.interframe_gap_nanoseconds)
+        stream.NumberOfFramesSet(number_of_frames)
 
         # a stream needs to send some data, so lets create a frame
         # For the frame, we need:
@@ -175,6 +186,7 @@ class Example:
         # Now all configuration is made
         print(stream.DescriptionGet())
         print(trigger.DescriptionGet())
+        print(network_info_monitor.DescriptionGet())
 
         # Make sure we are the only users for the wireless endpoint
         self.wireless_endpoint.Lock(True)
@@ -196,12 +208,19 @@ class Example:
         print("Waiting for", time_to_wait_ns / 1000000000.0, "to start the port")
         sleep(time_to_wait_ns / 1000000000.0)
 
-        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames + 1000000000
+        duration_ns = self.duration + 1000000000
         print("Port will transmit for", duration_ns / 1000000000.0, "seconds")
         self.port.Start()
 
         print("Waiting for the test to finish")
-        sleep(duration_ns / 1000000000.0)
+        for i in range(int(duration_ns / 1000000000)):
+            # Refresh the stream results
+            stream.ResultHistoryGet().Refresh()
+
+            # Refresh the trigger results
+            trigger.ResultHistoryGet().Refresh()
+
+            sleep(1)
 
         print("Wait for the device to beat")
         # Usually one second
@@ -212,20 +231,53 @@ class Example:
 
         self.wireless_endpoint.Lock(False)
 
-        tx_result = stream.ResultGet()
-        tx_result.Refresh()
-        rx_result = trigger.ResultGet()
-        rx_result.Refresh()
+        stream_history = stream.ResultHistoryGet()
+        stream_history.Refresh()
+        trigger_history = trigger.ResultHistoryGet()
+        trigger_history.Refresh()
+        network_info_monitor_history = network_info_monitor.ResultHistoryGet()
+        network_info_monitor_history.Refresh()
 
-        tx_packets = tx_result.PacketCountGet()
-        rx_packets = rx_result.PacketCountGet()
-        print("Transmitted", tx_packets, "packets")
-        print("Received   ", rx_packets, "packets")
+        results = []
+        for network_info_interval in network_info_monitor_history.IntervalGet():
+            timestamp = network_info_interval.TimestampGet()
 
-        return {
-            'tx': tx_packets,
-            'rx': rx_packets
-        }
+            network_interface = self.find_wifi_interface(network_info_interval.InterfaceGet())
+
+            result = {
+                'timestamp': timestamp,
+                'rssi': -127,
+                'tx_frames': 0,
+                'rx_frames': 0,
+                'loss': 0,
+                'throughput': 0
+            }
+            if network_interface is not None:
+                result['rssi'] = network_interface.WiFiRssiGet()
+
+            try:
+                stream_interval = stream_history.IntervalGetByTime(timestamp)
+                result['tx_frames'] = stream_interval.PacketCountGet()
+            except ConfigError as e:
+                print("ERROR: Could not get result for stream on timestamp", timestamp, ":", str(e))
+
+            try:
+                trigger_interval = trigger_history.IntervalGetByTime(timestamp)
+                result['rx_frames'] = trigger_interval.PacketCountGet()
+
+                throughput = self.frame_size * result['rx_frames'] * 8
+                result['throughput'] = throughput
+            except ConfigError as e:
+                print("ERROR: Could not get result for trigger on timestamp", timestamp, ":", str(e))
+
+            if result['tx_frames'] != 0:
+                lost_frames = result['tx_frames'] - result['rx_frames']
+                loss = lost_frames * 100.0 / result['tx_frames']
+                result['loss'] = loss
+
+            results.append(result)
+
+        return results
 
     def cleanup(self):
         instance = ByteBlower.InstanceGet()
@@ -295,9 +347,121 @@ class Example:
         return None
 
 
+def human_readable_date(bb_timestamp):
+    return str(datetime.datetime.fromtimestamp(int(bb_timestamp / 1e9)))
+
+
+def write_csv(result_list, filename, keys, separator=','):
+    with open(filename, 'w') as f:
+        # Write the headers
+        f.write(separator.join(['"' + key + '"' for key in keys]) + "\n")
+
+        # Write the results
+        for result in result_list:
+            items = []
+
+            # format the result items,
+            # strings will be quoted,
+            # timestamps will be human readable dates
+            for key in keys:
+                item = result[key]
+
+                if key == 'timestamp':
+                    item = human_readable_date(int(item))
+
+                if isinstance(item, str):
+                    item = '"' + item + '"'
+
+                items.append(str(item))
+
+            # Write the result
+            f.write(separator.join(items) + "\n")
+
+
+def plot_data(device_name, data):
+    """
+    Plots the data collected by the example using matplotlib
+    :param device_name: Name of the device
+    :param data: The data returned by the example
+    """
+
+    timestamps = []
+    rssis = []
+    losses = []
+    throughputs = []
+
+    # Reformat the example data for use in the graphics
+    for item in data:
+        timestamps.append(item['timestamp'] / 1000000000)
+        losses.append(int(item['loss']))
+        throughputs.append(int(item['throughput'])/1000000.0)
+        rssis.append(item['rssi'])
+
+    # Reformat the timestamps so we have timestamps since the start of
+    # the example
+    min_ts = min(timestamps)
+    x_labels = [x - min_ts for x in timestamps]
+
+    # Get the default figure and axis
+    fig, axes = plt.subplots(2, 1)
+
+    ax1 = axes[0]
+
+    # Set the title of the graph
+    ax1.set_title(device_name + " UDP loss vs RSSI over time")
+
+    # Plot the throughput on the default axis, in the color red
+    ax1.plot(x_labels, losses, 'r')
+    ax1.set_ylabel('Loss (%)', color="red")
+    ax1.set_ylim(0, 100)
+    ax1.set_xlabel('Time')
+
+    # Add another Y axis, which uses the same X axis
+    ax2 = ax1.twinx()
+
+    # Plot the RSSI on the new axis, color is blue
+    ax2.plot(x_labels, rssis, 'b')
+    ax2.set_ylabel('RSSI (dBm)', color="blue")
+    ax2.set_ylim(-127, 0)
+
+    ax_throughput = axes[1]
+    # Set the title of the graph
+    ax_throughput.set_title(device_name + " UDP Throughput vs RSSI over time")
+
+    # Plot the throughput on the default axis, in the color red
+    ax_throughput.plot(x_labels, throughputs, 'r')
+    ax_throughput.set_ylabel('Throughput (Mbps)', color="red")
+    ax_throughput.set_ylim(bottom=0)
+    ax_throughput.set_xlabel('Time')
+
+    # Add another Y axis, which uses the same X axis
+    ax_throughput_rssi = ax_throughput.twinx()
+
+    # Plot the RSSI on the new axis, color is blue
+    ax_throughput_rssi.plot(x_labels, rssis, 'b')
+    ax_throughput_rssi.set_ylabel('RSSI (dBm)', color="blue")
+    ax_throughput_rssi.set_ylim(-127, 0)
+
+    # Crop the image
+    fig.tight_layout()
+    # Save the image
+    fig.savefig(os.path.basename(__file__) + ".png")
+
+
 if __name__ == '__main__':
     example = Example(**configuration)
+    device_name = "Unknown"
     try:
-        example.run()
+        example_results = example.run()
+        device_name = example.wireless_endpoint.DeviceInfoGet().GivenNameGet()
+
+        print("Storing the results")
+        results_file = os.path.basename(__file__) + ".csv"
+        desired_keys = ['timestamp', 'tx_frames', 'rx_frames', 'loss', 'throughput', 'rssi']
+        write_csv(example_results, filename=results_file, keys=desired_keys)
+        print("Results written to", results_file)
+
+        plot_data(device_name, example_results)
+
     finally:
         example.cleanup()

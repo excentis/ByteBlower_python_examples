@@ -65,7 +65,7 @@ configuration = {
     # duration, in nanoseconds
     # Duration of the session
     #           sec  milli  micro  nano
-    'duration': 30 * 1000 * 1000 * 1000,
+    'duration': 10 * 1000 * 1000 * 1000,
 
     # TOS value to use on the HTTP client (and server)
     'tos': 0
