@@ -30,7 +30,7 @@ configuration = {
 
         # The VLAN config is optional. If no VLAN is requred, just leave it out.
         # if you don need one, it can be configured as follows.
-        # 'vlan': 10
+        # 'vlan': 10,
 
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
