@@ -220,19 +220,39 @@ class Example:
         return [tx_frames, rx_frames]
 
     def provision_port(self, config):
+        """
+            Applies the config parameter to a ByteBlower port.
+
+            Little has changed in this example compared to 
+            IPv4.py. For the generic info we suggest to 
+            look there.
+
+            The VLAN config is new. As you'll notice this is 
+            only a small part of the config.
+        """
         port = self.server.PortCreate(config['interface'])
         port_l2 = port.Layer2EthIISet()
         port_l2.MacSet(config['mac'])
 
-
+        # When the config has vlan, add this 
+        # layer to the ByteBlower port.
+        # The extra layer ensures that the ByteBlowerPort
+        # performs basic functionality (DHCP, ARP,..) in
+        # the configured VLAN.
+        #
+        # This is the only change in this method compared
+        # to ipv4.py
         if 'vlan' in config:
             vlan_id = int(config['vlan'])
             port_l2_5 = port.Layer25VlanAdd()
             port_l2_5.IDSet(vlan_id)
 
+        # The remainder of the config is independent of a 
+        # VLAN config. When necessary the ByteBlower will
+        # will automatically add the VLAN to the appropriate
+        # protocols.
         ip_config = config['ip']
         if not isinstance(ip_config, list):
-            # Config is not static, DHCP or slaac
             if ip_config.lower() == "dhcpv4":
                 port_l3 = port.Layer3IPv4Set()
                 port_l3.ProtocolDhcpGet().Perform()
