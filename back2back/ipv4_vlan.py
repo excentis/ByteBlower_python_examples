@@ -26,11 +26,12 @@ configuration = {
 
     # Configuration for the first ByteBlower port.  Will be used as the TX port.
     'port_1_config': {
-        'interface': 'trunk-1-13',
+        'interface': 'trunk-1-19',
         'mac': '00:bb:01:00:00:01',
 
         # If this port requires a VLAN, add it as as follows.
         # 'vlan': 10
+        'vlan': 2,
 
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
@@ -45,14 +46,14 @@ configuration = {
         'interface': 'trunk-1-20',
         'mac': '00:bb:01:00:00:02',
 
-i       # VLAN can be configured optionally.
-        'vlan:' 2,
+        # VLAN can be configured optionally.
+        'vlan': 2,
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
         #'ip': 'static',
         # if staticv4, use ["ipaddress", netmask, gateway]
-         'ip': ['172.21.107.130', "255.255.255.0", "172.20.0.1"],
+        'ip': ['172.24.107.130', "255.252.0.0", "172.24.0.1"],
     },
 
     # number of frames to send.
@@ -120,11 +121,16 @@ class Example:
         payload = 'a' * (frame_size - 42)
 
         from scapy.layers.inet import UDP, IP, Ether
-        from scapy.all import Raw
+        from scapy.all import Raw, Dot1Q
         scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
         scapy_udp_header = UDP(dport=udp_dest, sport=udp_src)
         scapy_ip_header = IP(src=src_ip, dst=dst_ip)
-        scapy_frame = Ether(src=src_mac, dst=dst_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+        if 'vlan' in self.port_1_config:
+            vlan_id = self.port_1_config['vlan']
+            scapy_frame = Ether(src=src_mac, dst=dst_mac) / Dot1Q(vlan=vlan_id) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+        else:
+            scapy_frame = Ether(src=src_mac, dst=dst_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+
 
         frame_content = bytearray(bytes(scapy_frame))
 
@@ -140,7 +146,12 @@ class Example:
         # every trigger needs to know on which frames it will work.  The default filter is no filter, so it will
         # analyze every frame, which is not what we want here.
         # We will filter on the destination IP and the destination UDP port
+         
         bpf_filter = "ip dst {} and udp port {}".format(dst_ip, udp_dest)
+        if 'vlan' in self.port_2_config:
+            bpf_filter = 'vlan {} and {}'.format(self.port_2_config['vlan'], bpf_filter)
+            print("BPF Filter: " + bpf_filter)
+
         trigger.FilterSet(bpf_filter)
 
         # print the configuration, this makes it easy to review what we have done until now
@@ -211,9 +222,16 @@ class Example:
         return [tx_frames, rx_frames]
 
     def provision_port(self, config):
+        print(config)
         port = self.server.PortCreate(config['interface'])
         port_l2 = port.Layer2EthIISet()
         port_l2.MacSet(config['mac'])
+
+
+        if 'vlan' in config:
+            vlan_id = int(config['vlan'])
+            port_l2_5 = port.Layer25VlanAdd()
+            port_l2_5.IDSet(vlan_id)
 
         ip_config = config['ip']
         if not isinstance(ip_config, list):
@@ -238,6 +256,7 @@ class Example:
                 port_l3.IpSet(ip_config[0])
                 port_l3.NetmaskSet(ip_config[1])
                 port_l3.GatewaySet(ip_config[2])
+                port_l3.ProtocolGratuitousArpReply()
                 config['ip_address'] = port_l3.IpGet()
             elif len(ip_config) == 2:
                 port_l3 = port.Layer3IPv6Set()
