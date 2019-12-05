@@ -1,14 +1,15 @@
 """
-This examples builds on the basic IPv4 example. In this example
-you can configure a VLAN at transmitting and receiving end. Both
-sides can have a different config.
+This examples builds on the basic IPv4 example, we show here 
+extra how to (optionally) configure a VLAN at transmitting 
+and receiving end. As is often the case, both sides can 
+have a different config.
 
-The goal is to teach the impact of the VLAN on various parts of
+The goal of the script is to teach the impact of the VLAN on various parts of
 the code. We do suggest to first get familiar with the basic IPv4
-example.
+example, because as you'll notice, most is the same.
 
 For simplicity we won't show VLAN stacks (i.e. VLANs embedded in
-another VLAN). It's a small addition to this script, we suggest 
+another VLAN). It's a small addition, we do suggest 
 to try it yourself, but don't hesitate to contact us at
 support.byteblower@excentis.com for help.
 
@@ -85,35 +86,26 @@ class Example:
         print("Connecting to ByteBlower server {}...".format(self.server_address))
         self.server = byteblower_instance.ServerAdd(self.server_address)
 
-        # Create the port which will be the HTTP server (port_1)
-        print("Creating TX port")
+        print("Creating ports")
+        # Do check the provision_port code. The vlan has
+        # a small impact there.
         self.port_1 = self.provision_port(self.port_1_config)
-
-        print("Creating RX port")
-        # Create the port which will be the HTTP client (port_2)
         self.port_2 = self.provision_port(self.port_2_config)
 
-        # now create the stream.  A stream transmits frames on the port on which it is created.
+        # Creating the stream where we'll sent the traffic from. 
+        # Most is the same as the basic IPv4 example.
         stream = self.port_1.TxStreamAdd()
-
-        # set the number of frames to transmit
         stream.NumberOfFramesSet(self.number_of_frames)
-
-        # set the speed of the transmission
         stream.InterFrameGapSet(self.interframegap_ns)
 
-        # a stream transmits frames, so we need to tell the stream which frames we want to transmit
         frame = stream.FrameAdd()
-
-        # collect the frame header info.  We need to provide the Layer2 (ethernet) and Layer3 (IPv4) addresses.
+        
+        # Collect the basic addressing info for the Tx side.
+        # VLAN id handled lower in the code.
         src_ip = self.port_1_config['ip_address']
         src_mac = self.port_1.Layer2EthIIGet().MacGet()
 
         dst_ip = self.port_2_config['ip_address']
-
-        # the destination MAC is the MAC address of the destination port if the destination port is in the same
-        # subnet as the source port, otherwise it will be the MAC address of the gateway.
-        # ByteBlower has a function to resolve the correct MAC address in the Layer3 configuration object
         dst_mac = self.port_1.Layer3IPv4Get().Resolve(dst_ip)
 
         frame_size = 512
@@ -122,48 +114,59 @@ class Example:
         payload = 'a' * (frame_size - 42)
 
         from scapy.layers.inet import UDP, IP, Ether
-        from scapy.all import Raw, Dot1Q
+        from scapy.all import Raw
+
+        # We will need to add a VLAN layer in the frame to transmit.
+        # In scapy Vlans are represented in the Dot1Q class.
+        from scapy.all import Dot1Q
+
+        
         scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
         scapy_udp_header = UDP(dport=udp_dest, sport=udp_src)
         scapy_ip_header = IP(src=src_ip, dst=dst_ip)
+
+
+        # A stream will always send the packet just as configured.
+        # When the Tx ByteBlower port has a VLAN, we need to add it 
+        # to frame to be sent.
+        # The following 5 lines are the only difference compared
+        # to the basic IPv4 example.
         if 'vlan' in self.port_1_config:
             vlan_id = self.port_1_config['vlan']
             scapy_frame = Ether(src=src_mac, dst=dst_mac) / Dot1Q(vlan=vlan_id) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
         else:
             scapy_frame = Ether(src=src_mac, dst=dst_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
-
-
+        
+        # As noted above, the remaineder of the stream config is the same again.
         frame_content = bytearray(bytes(scapy_frame))
-
-        # The ByteBlower API expects an 'str' as input for the Frame::BytesSet(), we need to convert the bytearray
         hexbytes = ''.join((format(b, "02x") for b in frame_content))
-
         frame.BytesSet(hexbytes)
 
-        # create a trigger.  A trigger is an object which receives data.
-        # The Basic trigger just count packets
+        # create a trigger to count the number of received frames. 
+        # Similar to the stream we will need to make a slight modification
+        # for the Vlan layer.
         trigger = self.port_2.RxTriggerBasicAdd()
 
-        # every trigger needs to know on which frames it will work.  The default filter is no filter, so it will
-        # analyze every frame, which is not what we want here.
-        # We will filter on the destination IP and the destination UDP port
-         
+        # The BPF filter on a trigger is promiscous: it will be applied to all
+        # traffic that arrives at the Physical interface.
+        #
+        # When we expect to receive packets with a VLAN, we need to add
+        # this element to the filter.
         if 'vlan' in self.port_2_config:
             rx_vlan_id = str(self.port_2_config['vlan'])
             bpf_filter = "vlan {} and ip dst {} and udp port {}".format(rx_vlan_id, dst_ip, udp_dest)
         else:
             bpf_filter = "ip dst {} and udp port {}".format(dst_ip, udp_dest)
-
         trigger.FilterSet(bpf_filter)
-            
 
-        # print the configuration, this makes it easy to review what we have done until now
+        # The above filter was the last change necessary in this method. The remainder,
+        #  result gathering and cleanup is the same.
+
+        # VLAN info will be list in the port description below. 
         print("Current ByteBlower configuration:")
         print("port1:", self.port_1.DescriptionGet())
         print("port2:", self.port_2.DescriptionGet())
 
-        # start the traffic, clear the latency trigger.  Triggers are active as soon they are created, so
-        # we may want to clear the data it already has collected.
         print("Starting traffic")
         trigger.ResultClear()
         stream_history = stream.ResultHistoryGet()
@@ -172,15 +175,14 @@ class Example:
         duration_ns = self.interframegap_ns * self.number_of_frames
         duration_s = duration_ns / 1000000000 + 1
 
+        # Running the test. No difference here.
+        # For more info on specific methods, do look into
+        # the API specification (http:\\api.byteblower.com)
+        # or the ipv4.py example.
         stream.Start()
-
-        # duration_s is a float, so we need to cast it to an integer first
         for iteration in range(1, int(duration_s)):
-            # sleep one second
             sleep(1)
 
-            # Refresh the history, the ByteBlower server will create interval and cumulative results every
-            # second (by default).  The Refresh method will synchronize the server data with the client.
             stream_history.Refresh()
             trigger_history.Refresh()
 
@@ -194,14 +196,10 @@ class Example:
 
         print("Done sending traffic (time elapsed)")
 
-        # Waiting for a second after the stream is finished.
-        # This has the advantage that frames that were transmitted but not received yet,
-        # can be processed by the server
         print("Waiting for a second")
         sleep(1)
 
-        # During the test itself we queried the interval counters, there are also cumulative counters.
-        # The last cumulative counter available in the history is also available as the Result
+        # Collect and show the results.
         stream_result = stream.ResultGet()
         oos_result = trigger.ResultGet()
         stream_result.Refresh()
@@ -214,18 +212,14 @@ class Example:
 
         print("Sent {TX} frames, received {RX} frames".format(TX=tx_frames, RX=rx_frames))
 
-        # It is considered good practice to clean up your objects.  This tells the ByteBlower server it can
-        # clean up its resources.
+        # No specific cleanup is needed for the Vlan.
         self.server.PortDestroy(self.port_1)
         self.server.PortDestroy(self.port_2)
-
-        # Disconnect from the ByteBlower server
         byteblower_instance.ServerRemove(self.server)
 
         return [tx_frames, rx_frames]
 
     def provision_port(self, config):
-        print(config)
         port = self.server.PortCreate(config['interface'])
         port_l2 = port.Layer2EthIISet()
         port_l2.MacSet(config['mac'])
