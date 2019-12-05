@@ -33,6 +33,7 @@ configuration = {
         # 'vlan': 10
         'vlan': 2,
 
+
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
@@ -147,12 +148,14 @@ class Example:
         # analyze every frame, which is not what we want here.
         # We will filter on the destination IP and the destination UDP port
          
-        bpf_filter = "ip dst {} and udp port {}".format(dst_ip, udp_dest)
         if 'vlan' in self.port_2_config:
-            bpf_filter = 'vlan {} and {}'.format(self.port_2_config['vlan'], bpf_filter)
-            print("BPF Filter: " + bpf_filter)
+            rx_vlan_id = str(self.port_2_config['vlan'])
+            bpf_filter = "vlan {} and ip dst {} and udp port {}".format(rx_vlan_id, dst_ip, udp_dest)
+        else:
+            bpf_filter = "ip dst {} and udp port {}".format(dst_ip, udp_dest)
 
         trigger.FilterSet(bpf_filter)
+            
 
         # print the configuration, this makes it easy to review what we have done until now
         print("Current ByteBlower configuration:")
