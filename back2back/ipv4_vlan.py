@@ -1,12 +1,10 @@
 """
-This examples builds on the basic IPv4 example, we show here 
-extra how to (optionally) configure a VLAN at transmitting 
-and receiving end. As is often the case, both sides can 
-have a different config.
+This examples builds on the basic IPv4 example, we show here extra how to configure a VLAN. 
+We show both the config necessary for the transmitting and the receiving end.
 
 The goal of the script is to teach the impact of the VLAN on various parts of
-the code. We do suggest to first get familiar with the basic IPv4
-example, because as you'll notice, most is the same.
+the code. As you'll notice the impact is very small. As a result we do suggest to first get familiar with the basic IPv4
+example. Here we'll only explain the extra config elements due to the VLAN.
 
 For simplicity we won't show VLAN stacks (i.e. VLANs embedded in
 another VLAN). It's a small addition, we do suggest 
@@ -30,9 +28,9 @@ configuration = {
         'interface': 'trunk-1-19',
         'mac': '00:bb:01:00:00:01',
 
-        # If this port requires a VLAN, add it as as follows.
+        # The VLAN config is optional. If no VLAN is requred, just leave it out.
+        # if you don need one, it can be configured as follows.
         # 'vlan': 10
-        'vlan': 2,
 
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
@@ -47,7 +45,7 @@ configuration = {
         'interface': 'trunk-1-20',
         'mac': '00:bb:01:00:00:02',
 
-        # VLAN can be configured optionally.
+        # Opptionally a VLAN can be configured.
         'vlan': 2,
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
@@ -246,6 +244,9 @@ class Example:
         #
         # This is the only change in this method compared
         # to ipv4.py
+        # To keep things simple we'll only configure the Vlan ID. In
+        # the api reference, you'll find that it's also possible to configre
+        # priority count and drop eligable indicator.
         if 'vlan' in config:
             vlan_id = int(config['vlan'])
             port_l2_5 = port.Layer25VlanAdd()
