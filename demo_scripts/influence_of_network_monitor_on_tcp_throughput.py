@@ -11,13 +11,12 @@ from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved, ConfigErr
 import os
 import sys
 
-
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
     'server_address': '10.10.1.202',
 
     # Interface on the server to create a port on.
-    'server_interface': 'trunk-1-2',
+    'server_interface': 'trunk-1-1',
 
     # MAC address of the ByteBlower port which will be generated
     'port_mac_address': '00:bb:01:00:00:01',
@@ -61,11 +60,11 @@ configuration = {
     #        webserver
     # 'http_method': 'GET',
     'http_method': 'PUT',
-    
+
     # duration, in nanoseconds
     # Duration of the session
     #           sec  milli  micro  nano
-    'duration': 10 * 1000 * 1000 * 1000,
+    'duration': 60 * 1000 * 1000 * 1000,
 
     # TOS value to use on the HTTP client (and server)
     'tos': 0
@@ -97,22 +96,23 @@ class Example:
         self.duration = kwargs['duration']
         self.tos = kwargs['tos']
 
+        # Number of samples per second
+        self.sample_resolution = 1
+        # duration of the samples taken. (nanoseconds)
+        self.sample_duration = int(1000000000 / self.sample_resolution)
+
+        # number of samples to take:
+        # ( test_duration / sample_duration) is just enough, so we are doubling
+        # this so we have more than enough
+        self.sample_count = int(2 * (self.duration / self.sample_duration))
+
         self.server = None
         self.port = None
         self.meetingpoint = None
         self.wireless_endpoint = None
         self.network_info_monitor = None
 
-    def run(self):
-
-        # duration of the samples taken. (nanoseconds)
-        sample_duration = 1000000000
-
-        # number of samples to take:
-        # ( test_duration / sample_duration) is just enough, so we are doubling
-        # this so we have more than enough
-        sample_count = int(2 * (self.duration / sample_duration))
-
+    def __enter__(self):
         instance = ByteBlower.InstanceGet()
 
         # Connect to the server
@@ -156,50 +156,27 @@ class Example:
         # but us can use this device.
         self.wireless_endpoint.Lock(True)
 
-        # Configure the HTTP server, running on the ByteBlower port.
-        http_server = self.port.ProtocolHttpServerAdd()
-        if self.port_tcp_port is None:
-            self.port_tcp_port = random.randint(10000, 40000)
+        return self
 
-        # Configure the TCP port on which the HTTP server wll listen
-        http_server.PortSet(self.port_tcp_port)
+    def __exit__(self, *args, **kwargs):
+        instance = ByteBlower.InstanceGet()
 
-        # Configure the receive window.
-        http_server.ReceiveWindowScalingEnable(True)
-        http_server.ReceiveWindowScalingValueSet(7)
+        if self.wireless_endpoint is not None:
+            self.wireless_endpoint.Lock(False)
 
-        # Tell the ByteBlower to sample every sample_duration and keep up to
-        # sample_count samples (see top of this function)
-        http_server.HistorySamplingIntervalDurationSet(sample_duration)
-        http_server.HistorySamplingBufferLengthSet(sample_count)
+        if self.meetingpoint is not None:
+            instance.MeetingPointRemove(self.meetingpoint)
+            self.meetingpoint = None
 
-        # A HTTP server will not listen for new connections as long it is not
-        # started.  You can compare it to e.g. Apache or nginx, it won't accept
-        # new connections as long the daemon is not started.
-        http_server.Start()
+        if self.port is not None:
+            self.server.PortDestroy(self.port)
+            self.port = None
 
-        print("HTTP server configuration:", http_server.DescriptionGet())
+        if self.server is not None:
+            instance.ServerRemove(self.server)
+            self.server = None
 
-        # Configure the client.
-        http_client = self.wireless_endpoint.ProtocolHttpClientAdd()
-        # Configure the remote endpoint to which it must connect.
-        # This is the IP address and port of the HTTP server configured above
-        http_client.RemoteAddressSet(self.port.Layer3IPv4Get().IpGet())
-        http_client.RemotePortSet(self.port_tcp_port)
-
-        http_client.RequestDurationSet(self.duration)
-        http_client.RequestInitialTimeToWaitSet(0)
-        # What will we do? HTTP Get or HTTP PUT?
-        http_client.HttpMethodSet(self.http_method)
-
-        http_client.TypeOfServiceSet(self.tos)
-
-        print("HTTP client configuration:", http_client.DescriptionGet())
-
-        # Add a NetworkInfoMonitor, to monitor the RSSI over time :
-        device_info = self.wireless_endpoint.DeviceInfoGet()
-        self.network_info_monitor = device_info.NetworkInfoMonitorAdd()
-
+    def _run_scenario(self):
         # Send the scenario to the wireless endpoint
         self.wireless_endpoint.Prepare()
 
@@ -221,14 +198,115 @@ class Example:
             time.sleep(1)
             status = self.wireless_endpoint.StatusGet()
             now = datetime.datetime.now()
-            print(str(now), ":: Running for", str(now - start_moment), "::",
-                  http_server.ClientIdentifiersGet().size(), "client(s) connected")
+            print(str(now), ":: Running for", str(now - start_moment))
 
         # Wireless Endpoint has returned. Collect and process the results.
 
         # Fetch the results from the wireless endpoint, they will be stored
         # at the MeetingPoint, we will fetch the results in a following step.
         self.wireless_endpoint.ResultGet()
+
+    def _create_http_server(self):
+        # Configure the HTTP server, running on the ByteBlower port.
+        http_server = self.port.ProtocolHttpServerAdd()
+        if self.port_tcp_port is None:
+            self.port_tcp_port = random.randint(10000, 40000)
+
+        # Configure the TCP port on which the HTTP server wll listen
+        http_server.PortSet(self.port_tcp_port)
+
+        # Configure the receive window.
+        http_server.ReceiveWindowScalingEnable(True)
+        http_server.ReceiveWindowScalingValueSet(7)
+
+        # Tell the ByteBlower to sample every sample_duration and keep up to
+        # sample_count samples (see top of this function)
+        http_server.HistorySamplingIntervalDurationSet(self.sample_duration)
+        http_server.HistorySamplingBufferLengthSet(self.sample_count)
+
+        # A HTTP server will not listen for new connections as long it is not
+        # started.  You can compare it to e.g. Apache or nginx, it won't accept
+        # new connections as long the daemon is not started.
+        http_server.Start()
+
+        return http_server
+
+    def _create_http_client(self):
+        # Configure the client.
+        http_client = self.wireless_endpoint.ProtocolHttpClientAdd()
+        # Configure the remote endpoint to which it must connect.
+        # This is the IP address and port of the HTTP server configured above
+        http_client.RemoteAddressSet(self.port.Layer3IPv4Get().IpGet())
+        http_client.RemotePortSet(self.port_tcp_port)
+
+        http_client.RequestDurationSet(self.duration)
+        http_client.RequestInitialTimeToWaitSet(0)
+        # What will we do? HTTP Get or HTTP PUT?
+        http_client.HttpMethodSet(self.http_method)
+
+        http_client.TypeOfServiceSet(self.tos)
+        return http_client
+
+    def run_without_monitor(self):
+        http_server = self._create_http_server()
+        print("HTTP server configuration:", http_server.DescriptionGet())
+
+        http_client = self._create_http_client()
+
+        print("HTTP client configuration:", http_client.DescriptionGet())
+
+        # Run the configured scenario:
+        self._run_scenario()
+
+        # Fetch the results of our HTTP Server.
+
+        client_idents = http_server.ClientIdentifiersGet()
+        if len(client_idents) == 0:
+            print("Nothing connected")
+            sys.exit(-1)
+
+        client_identifier = client_idents[0]
+        http_session = http_server.HttpSessionInfoGet(client_identifier)
+        http_hist = http_session.ResultHistoryGet()
+        http_hist.Refresh()
+
+        # Now we have all results available in our API, we can process them.
+
+        # We will store results in a list, containing dicts
+        # { 'timestamp': ... , 'SSID': ... , 'BSSID': ... , 'throughput': ...
+        results = []
+
+        for http_interval in http_hist.IntervalGet():
+            timestamp = http_interval.TimestampGet()
+            # Get the average througput for this interval
+            # type is byteblowerll.byteblower.DataRate
+            rate = http_interval.AverageDataSpeedGet()
+
+            rate_bps = rate.bitrate()
+
+            results.append({
+                'timestamp': timestamp,
+                'throughput': int(rate_bps),
+            })
+
+        return results
+
+    def run_with_monitor(self):
+
+        # Configure the HTTP server, running on the ByteBlower port.
+        http_server = self._create_http_server()
+        print("HTTP server configuration:", http_server.DescriptionGet())
+
+        # Configure the client.
+        http_client = self._create_http_client()
+        print("HTTP client configuration:", http_client.DescriptionGet())
+
+        self.network_info_monitor = self.wireless_endpoint.DeviceInfoGet().NetworkInfoMonitorAdd()
+        self.network_info_monitor.ResultHistoryGet().SamplingIntervalDurationSet(self.sample_duration)
+        print("NetworkInfo monitor configuration:", self.network_info_monitor.DescriptionGet())
+
+        # Run the configured scenario
+        self._run_scenario()
 
         # Fetch the results of our created NetworkInfoMonitor
         network_info_history = self.network_info_monitor.ResultHistoryGet()
@@ -298,18 +376,13 @@ class Example:
 
             results.append(result)
 
-        self.server.PortDestroy(self.port)
-        self.wireless_endpoint.Lock(False)
         return results
 
-    def cleanup(self):
-        instance = ByteBlower.InstanceGet()
+    def run(self):
+        results_without_monitor = self._run_without_monitor()
+        results_with_monitor = self._run_with_monitor()
 
-        # Cleanup
-        if self.meetingpoint is not None:
-            instance.MeetingPointRemove(self.meetingpoint)
-        if self.server is not None:
-            instance.ServerRemove(self.server)
+        return results_without_monitor, results_with_monitor
 
     def find_wifi_interface(self, interface_list):
         """"Looks for the wireless interface
@@ -369,89 +442,82 @@ class Example:
         return None
 
 
-def human_readable_date(bb_timestamp):
-    return str(datetime.datetime.fromtimestamp(int(bb_timestamp / 1e9)))
+def _get_max_throughput_mbps(*results):
+    max_throughput = 0
+    for resultset in results:
+        for result in resultset:
+            if 'throughput' in result:
+                throughput = int(result['throughput'] / 1000000.0)
+                max_throughput = max(throughput, max_throughput)
+    return max_throughput
 
 
-def write_csv(result_list, filename, first_key, separator=';'):
-    # We use the first item to collect our headers
-    first_result = result_list[0]
+def _plot_throughput(throughput_axis, results, max_throughput):
+    timestamps = []
+    throughputs = []
 
-    # Make sure the first key in the list is the key we want to be the first.
-    keys = list(first_result.keys())
-    keys.remove(first_key)
-    keys.insert(0, first_key)
+    for item in results:
+        timestamps.append(item['timestamp'] / 1000000000.0)
+        throughputs.append(int(item['throughput'] / 1000000.0))
 
-    with open(filename, 'w') as f:
-        # Write the headers
-        f.write(separator.join(['"' + key + '"' for key in keys]) + "\n")
+    min_timestamp = min(timestamps)
+    timestamps = [x - min_timestamp for x in timestamps]
 
-        # Write the results
-        for result in result_list:
-            items = []
+    throughput_axis.plot(timestamps, throughputs, 'b')
+    throughput_axis.set_ylim(0, max_throughput)
+    throughput_axis.set_xlabel('Time (s)')
+    throughput_axis.set_ylabel('Throughput (Mbps)')
 
-            # format the result items,
-            # strings will be quoted,
-            # timestamps will be human readable dates
-            for key in keys:
-                item = result[key]
-
-                if key == 'timestamp':
-                    item = human_readable_date(int(item))
-
-                if isinstance(item, str):
-                    item = '"' + item + '"'
-
-                items.append(str(item))
-
-            # Write the result
-            f.write(separator.join(items) + "\n")
+    throughput_axis.set_yticks(range(0, max_throughput, 100), minor=False)
+    throughput_axis.grid(which='major', axis='y')
 
 
-def plot_data(device_name, data):
+def _plot_rssi(rssi_axis, results):
+    timestamps = []
+    rssis = []
+
+    for item in results:
+        timestamps.append(item['timestamp'] / 1000000000.0)
+        rssis.append(int(item['RSSI']))
+
+    min_timestamp = min(timestamps)
+    timestamps = [x - min_timestamp for x in timestamps]
+
+    rssi_axis.plot(timestamps, rssis, 'r')
+    rssi_axis.set_ylim(-127, 0)
+    rssi_axis.set_xlabel('Time (s)')
+    rssi_axis.set_ylabel('RSSI (dBm)')
+    rssi_axis.set_yticks(range(-127, 0, 10), minor=False)
+
+
+def plot_data(device_name, results_without_monitor, results_with_monitor):
     """
     Plots the data collected by the example using matplotlib
     :param device_name: Name of the device
     :param data: The data returned by the example
     """
 
-    timestamps = []
-    rssis = []
-    throughputs = []
-
-    # Reformat the example data for use in the graphics
-    for item in data:
-        timestamps.append(item['timestamp'] / 1000000000)
-        throughputs.append(item['throughput'] / 1000000.0)
-        rssis.append(item['RSSI'])
-
-    # Reformat the timestamps so we have timestamps since the start of
-    # the example
-    min_ts = min(timestamps)
-    x_labels = [x - min_ts for x in timestamps]
-
     # Do the magic, start with importing matplotlib
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
+    max_throughput = _get_max_throughput_mbps(results_with_monitor, results_without_monitor)
+
     # Get the default figure and axis
-    fig, ax1 = plt.subplots()
+    fig, axes = plt.subplots(2, 1)
 
+    fig_1_throughput_axis = axes[0]
     # Set the title of the graph
-    ax1.set_title(device_name + " Throughput vs RSSI over time")
+    fig_1_throughput_axis.set_title(device_name + " Throughput over time without monitor")
+    _plot_throughput(fig_1_throughput_axis, results_without_monitor, max_throughput)
 
-    # Plot the throughput on the default axis, in the color red
-    ax1.plot(x_labels, throughputs, 'r')
-    ax1.set_ylabel('Throughput (Mbps)', color="red")
-    ax1.set_xlabel('Time')
+    fig_2_throughput_axis = axes[1]
+    fig_2_throughput_axis.set_title(device_name + " Throughput over time with monitor")
+    _plot_throughput(fig_2_throughput_axis, results_with_monitor, max_throughput)
 
-    # Add another Y axis, which uses the same X axis
-    ax2 = ax1.twinx()
-
-    # Plot the RSSI on the new axis, color is blue
-    ax2.plot(x_labels, rssis, 'b')
-    ax2.set_ylabel('RSSI (dBm)', color="blue")
+    fig_2_rssi_axis = fig_2_throughput_axis.twinx()
+    _plot_rssi(fig_2_rssi_axis, results_with_monitor)
 
     # Crop the image
     fig.tight_layout()
@@ -460,19 +526,17 @@ def plot_data(device_name, data):
 
 
 if __name__ == '__main__':
-    example = Example(**configuration)
-    device_name = "Unknown"
-    try:
-        example_results = example.run()
+    with Example(**configuration) as example:
+        # Collect some information
         device_name = example.wireless_endpoint.DeviceInfoGet().GivenNameGet()
-    finally:
-        example.cleanup()
 
-    print("Storing the results")
-    results_file = os.path.basename(__file__) + ".csv"
-    write_csv(example_results, filename=results_file, first_key='timestamp')
-    print("Results written to", results_file)
+        # Run the example
+        result1 = example.run_without_monitor()
 
-    plot_data(device_name, example_results)
+    with Example(**configuration) as example:
+        # Run the example again
+        result2 = example.run_with_monitor()
+
+    plot_data(device_name, result1, result2)
 
     sys.exit(0)
