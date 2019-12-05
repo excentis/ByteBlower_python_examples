@@ -256,7 +256,6 @@ class Example:
                 port_l3.IpSet(ip_config[0])
                 port_l3.NetmaskSet(ip_config[1])
                 port_l3.GatewaySet(ip_config[2])
-                port_l3.ProtocolGratuitousArpReply()
                 config['ip_address'] = port_l3.IpGet()
             elif len(ip_config) == 2:
                 port_l3 = port.Layer3IPv6Set()
