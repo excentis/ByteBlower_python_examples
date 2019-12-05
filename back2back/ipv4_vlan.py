@@ -34,7 +34,6 @@ configuration = {
         # 'vlan': 10
         'vlan': 2,
 
-
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
@@ -83,7 +82,8 @@ class Example:
     def run(self):
         byteblower_instance = ByteBlower.InstanceGet()
 
-        print("Connecting to ByteBlower server {}...".format(self.server_address))
+        print("Connecting to ByteBlower server {}...".format(
+            self.server_address))
         self.server = byteblower_instance.ServerAdd(self.server_address)
 
         print("Creating ports")
@@ -92,14 +92,14 @@ class Example:
         self.port_1 = self.provision_port(self.port_1_config)
         self.port_2 = self.provision_port(self.port_2_config)
 
-        # Creating the stream where we'll sent the traffic from. 
+        # Creating the stream where we'll sent the traffic from.
         # Most is the same as the basic IPv4 example.
         stream = self.port_1.TxStreamAdd()
         stream.NumberOfFramesSet(self.number_of_frames)
         stream.InterFrameGapSet(self.interframegap_ns)
 
         frame = stream.FrameAdd()
-        
+
         # Collect the basic addressing info for the Tx side.
         # VLAN id handled lower in the code.
         src_ip = self.port_1_config['ip_address']
@@ -120,29 +120,32 @@ class Example:
         # In scapy Vlans are represented in the Dot1Q class.
         from scapy.all import Dot1Q
 
-        
         scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
         scapy_udp_header = UDP(dport=udp_dest, sport=udp_src)
         scapy_ip_header = IP(src=src_ip, dst=dst_ip)
 
-
         # A stream will always send the packet just as configured.
-        # When the Tx ByteBlower port has a VLAN, we need to add it 
+        # When the Tx ByteBlower port has a VLAN, we need to add it
         # to frame to be sent.
         # The following 5 lines are the only difference compared
         # to the basic IPv4 example.
         if 'vlan' in self.port_1_config:
             vlan_id = self.port_1_config['vlan']
-            scapy_frame = Ether(src=src_mac, dst=dst_mac) / Dot1Q(vlan=vlan_id) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+            scapy_frame = Ether(
+                src=src_mac, dst=dst_mac) / Dot1Q(
+                    vlan=vlan_id
+                ) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
         else:
-            scapy_frame = Ether(src=src_mac, dst=dst_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
-        
+            scapy_frame = Ether(
+                src=src_mac, dst=dst_mac
+            ) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+
         # As noted above, the remaineder of the stream config is the same again.
         frame_content = bytearray(bytes(scapy_frame))
         hexbytes = ''.join((format(b, "02x") for b in frame_content))
         frame.BytesSet(hexbytes)
 
-        # create a trigger to count the number of received frames. 
+        # create a trigger to count the number of received frames.
         # Similar to the stream we will need to make a slight modification
         # for the Vlan layer.
         trigger = self.port_2.RxTriggerBasicAdd()
@@ -154,7 +157,8 @@ class Example:
         # this element to the filter.
         if 'vlan' in self.port_2_config:
             rx_vlan_id = str(self.port_2_config['vlan'])
-            bpf_filter = "vlan {} and ip dst {} and udp port {}".format(rx_vlan_id, dst_ip, udp_dest)
+            bpf_filter = "vlan {} and ip dst {} and udp port {}".format(
+                rx_vlan_id, dst_ip, udp_dest)
         else:
             bpf_filter = "ip dst {} and udp port {}".format(dst_ip, udp_dest)
         trigger.FilterSet(bpf_filter)
@@ -162,7 +166,7 @@ class Example:
         # The above filter was the last change necessary in this method. The remainder,
         #  result gathering and cleanup is the same.
 
-        # VLAN info will be list in the port description below. 
+        # VLAN info will be list in the port description below.
         print("Current ByteBlower configuration:")
         print("port1:", self.port_1.DescriptionGet())
         print("port2:", self.port_2.DescriptionGet())
@@ -191,8 +195,7 @@ class Example:
 
             print("Sent {TX} frames, received {RX} frames".format(
                 TX=last_interval_tx.PacketCountGet(),
-                RX=last_interval_rx.PacketCountGet()
-            ))
+                RX=last_interval_rx.PacketCountGet()))
 
         print("Done sending traffic (time elapsed)")
 
@@ -210,7 +213,8 @@ class Example:
         tx_frames = stream_result.PacketCountGet()
         rx_frames = oos_result.PacketCountGet()
 
-        print("Sent {TX} frames, received {RX} frames".format(TX=tx_frames, RX=rx_frames))
+        print("Sent {TX} frames, received {RX} frames".format(
+            TX=tx_frames, RX=rx_frames))
 
         # No specific cleanup is needed for the Vlan.
         self.server.PortDestroy(self.port_1)
@@ -234,7 +238,7 @@ class Example:
         port_l2 = port.Layer2EthIISet()
         port_l2.MacSet(config['mac'])
 
-        # When the config has vlan, add this 
+        # When the config has vlan, add this
         # layer to the ByteBlower port.
         # The extra layer ensures that the ByteBlowerPort
         # performs basic functionality (DHCP, ARP,..) in
@@ -247,7 +251,7 @@ class Example:
             port_l2_5 = port.Layer25VlanAdd()
             port_l2_5.IDSet(vlan_id)
 
-        # The remainder of the config is independent of a 
+        # The remainder of the config is independent of a
         # VLAN config. When necessary the ByteBlower will
         # will automatically add the VLAN to the appropriate
         # protocols.
