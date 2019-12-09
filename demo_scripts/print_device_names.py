@@ -6,6 +6,8 @@ import sys
 
 def get_device_info(server_address):
     output = ""
+    instance = None
+    meetingpoint = None
     try:
         instance = byteblower.ByteBlower.InstanceGet()
         assert isinstance(instance, byteblower.ByteBlower)
@@ -21,6 +23,10 @@ def get_device_info(server_address):
 
     except Exception as e:
         print("Caught Exception:", str(e))
+
+    finally:
+        if instance is not None and meetingpoint is not None:
+            instance.MeetingPointRemove(meetingpoint)
 
     return output
 
