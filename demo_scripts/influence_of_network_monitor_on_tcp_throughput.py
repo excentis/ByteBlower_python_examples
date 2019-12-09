@@ -379,8 +379,8 @@ class Example:
         return results
 
     def run(self):
-        results_without_monitor = self._run_without_monitor()
-        results_with_monitor = self._run_with_monitor()
+        results_without_monitor = self.run_without_monitor()
+        results_with_monitor = self.run_with_monitor()
 
         return results_without_monitor, results_with_monitor
 
@@ -494,13 +494,9 @@ def plot_data(device_name, results_without_monitor, results_with_monitor):
     """
     Plots the data collected by the example using matplotlib
     :param device_name: Name of the device
-    :param data: The data returned by the example
+    :param results_without_monitor: First data set returned by example
+    :param results_with_monitor: Second data set returned by example
     """
-
-    # Do the magic, start with importing matplotlib
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
 
     max_throughput = _get_max_throughput_mbps(results_with_monitor, results_without_monitor)
 
@@ -526,9 +522,14 @@ def plot_data(device_name, results_without_monitor, results_with_monitor):
 
 
 if __name__ == '__main__':
+    # Do the magic, start with importing matplotlib
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
     with Example(**configuration) as example:
         # Collect some information
-        device_name = example.wireless_endpoint.DeviceInfoGet().GivenNameGet()
+        selected_device_name = example.wireless_endpoint.DeviceInfoGet().GivenNameGet()
 
         # Run the example
         result1 = example.run_without_monitor()
@@ -537,6 +538,6 @@ if __name__ == '__main__':
         # Run the example again
         result2 = example.run_with_monitor()
 
-    plot_data(device_name, result1, result2)
+    plot_data(selected_device_name, result1, result2)
 
     sys.exit(0)
