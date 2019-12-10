@@ -138,7 +138,7 @@ class Example:
                 src=src_mac, dst=dst_mac
             ) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
 
-        # As noted above, the remaineder of the stream config is the same again.
+        # As noted above, the remainder of the stream config is the same again.
         frame_content = bytearray(bytes(scapy_frame))
         hexbytes = ''.join((format(b, "02x") for b in frame_content))
         frame.BytesSet(hexbytes)
@@ -202,14 +202,14 @@ class Example:
 
         # Collect and show the results.
         stream_result = stream.ResultGet()
-        oos_result = trigger.ResultGet()
+        trigger_result = trigger.ResultGet()
         stream_result.Refresh()
         print("Stream result:", stream_result.DescriptionGet())
-        oos_result.Refresh()
-        print("Out of sequence result:", oos_result.DescriptionGet())
+        trigger_result.Refresh()
+        print("Trigger result:", trigger_result.DescriptionGet())
 
         tx_frames = stream_result.PacketCountGet()
-        rx_frames = oos_result.PacketCountGet()
+        rx_frames = trigger_result.PacketCountGet()
 
         print("Sent {TX} frames, received {RX} frames".format(
             TX=tx_frames, RX=rx_frames))
