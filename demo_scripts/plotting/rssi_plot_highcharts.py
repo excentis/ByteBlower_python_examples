@@ -39,23 +39,15 @@ def create_highcharts(device_name, results):
                 'title': {
                     'text': styling + '#00AEEF; font-size: 12px; line-height: 1.2640625; font-weight: bold; ">Throughput [bps]</span>'
                 },
-                'min':0,
             }, {
                 'title': {
                     'text': styling + '#EC008C; font-size: 12px; line-height: 1.2640625; font-weight: bold; ">RSSI</span>'
                 },
-                # 'angle': '45',
-                # 'min': -127,
                 'opposite': 'true'
             }, {
                 'title': {
                     'text': styling + '#00A650; font-size: 12px; line-height: 1.2640625; font-weight: bold; ">SSID/BSSID</span>'
                 },
-                # 'labels': {
-                #     'rotation': 45,
-                # },
-                # 'min': 0,
-                'min': 0,
                 'categories': categories,
                 'opposite': 'true'
             }
@@ -80,7 +72,6 @@ def plot_data(device_name, results_filename):
     chart.add_data_set(results[1], 'line', 'RSSI', color='#EC008C', yAxis=1)
     chart.add_data_set(results[2], 'line', 'SSID/BSSID', color='#00A650', yAxis=2)
 
-    yAxis = chart.options.get('yAxis')
     write_highcharts_html(chart)
 
 
@@ -111,12 +102,12 @@ def read_from_csv(results_file):
     ssid_bssid_series = []
     ssid_bssid_categories = [[0,no_signal]]
 
-    skipheader = True
+    skip_header = True
     with open(results_file) as csvfile:
-        readCSV = csv.reader(csvfile, delimiter=',')
-        for row in readCSV:
-            if skipheader:
-                skipheader = False
+        read_csv = csv.reader(csvfile, delimiter=',')
+        for row in read_csv:
+            if skip_header:
+                skip_header = False
             else:
                 millis = get_millis(row[0])
                 throughput_series.append([millis,float(row[4])])
@@ -125,18 +116,7 @@ def read_from_csv(results_file):
                 index = append_ssid_bssid(ssid_bssid_categories, ssid_bssid)
                 ssid_bssid_series.append([millis, index])
 
-    # print(throughput_series)
-    # print(rssi_series)
-    print(ssid_bssid_series)
-
-    all_series = []
-    all_series.append(throughput_series)
-    all_series.append(rssi_series)
-    all_series.append(ssid_bssid_series)
-    all_series.append(ssid_bssid_categories)
-    return all_series
+    return [throughput_series, rssi_series, ssid_bssid_series, ssid_bssid_categories]
 
 if __name__ == '__main__':
-    device_name = 'Samsung S10'
-    results_file = 'rssi_vs_udp_loss.py.csv'
-    plot_data(device_name, results_file)
+    plot_data('Samsung S10', 'rssi_vs_udp_loss.py.csv')
