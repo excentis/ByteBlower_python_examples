@@ -1,13 +1,13 @@
 #!/usr/bin/python
 """"
-This examples collect the Wi-Fi statistics as they change in realtime.
+This examples collect the Wi-Fi statistics as they change in real-time.
 
-The get these values we use an Wi-Fi monitor. This aproach is different
-for the polling aproach is in following aspects:
+The get these values we use an Wi-Fi monitor. This approach is different
+for the polling approach is in following aspects:
 
     * The Wi-Fi statistics are collected at a regular interval,
       Default values are updated every second, much more frequent
-       than is possible through the polling aproach.
+       than is possible through the polling approach.
 
     * The Network monitor is always part of a scenario on a Wireless 
        Endpoint. This has a large impact:
@@ -18,8 +18,8 @@ for the polling aproach is in following aspects:
           - It takes a couple Wireless Endpoint heartbeat to start/finish a scenario. 
   
 We recommend using the NetworkInfoMonitor when you want to collect results:
-   * During a testrun.
-   * Whish to have a high update-rate.
+   * During a test run.
+   * Wish to have a high update-rate.
 
 """
 
