@@ -16,6 +16,9 @@ for the polling approach is in following aspects:
              radio silence you can't communicate with it.
           - A scenario is always locked to a single API connection.
           - It takes a couple Wireless Endpoint heartbeat to start/finish a scenario. 
+    
+    * If your device has multiple Wi-Fi network adapters, the statistics are logged
+       simultaneously on all network interfaces. 
 
     * The NetworkMonitor is more complex to use compared to the polling method. 
        This is especially when you are only interested indiciative values for
@@ -77,7 +80,7 @@ class Example:
         # Connect to the meetingpoint
         self.meetingpoint = instance.MeetingPointAdd(self.meetingpoint_address)
 
-        # If no WirelessEndpoint UUID was given, search an available one.
+        # If no WirelessEndpoint UUID was given, search for any available one.
         if self.wireless_endpoint_uuid is None:
             self.wireless_endpoint_uuid = self.select_wireless_endpoint_uuid()
 
@@ -85,13 +88,16 @@ class Example:
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
         print("Using wireless endpoint", self.wireless_endpoint.DeviceInfoGet().GivenNameGet())
 
-        # Make sure we are the only users for the wireless endpoint
+        # The network monitor is part of scenario.
         self.wireless_endpoint.Lock(True)
-
-        device_info = self.wireless_endpoint.DeviceInfoGet()
-        network_info_monitor = device_info.NetworkInfoMonitorAdd()
         self.wireless_endpoint.ScenarioDurationSet(self.duration_s * 1000000000)  # ns
 
+        # Add the monitor to the scenario.
+#       # The Wi-Fi statistics are captured as soon as the scenario starts.
+        device_info = self.wireless_endpoint.DeviceInfoGet()
+        network_info_monitor = device_info.NetworkInfoMonitorAdd()
+        
+        # Start the test-run.
         print("Starting the wireless endpoint")
         self.wireless_endpoint.Prepare()
         start_time = self.wireless_endpoint.Start()
@@ -119,8 +125,8 @@ class Example:
         history = network_info_monitor.ResultHistoryGet()
         history.Refresh()
 
-        # Collect the results
-        headers = (
+        # Collect the results from the NetworkInfoMonitor
+        csv_headers = (
             '"Time"',
             '"SSID"',
             '"BSSID"',
@@ -133,9 +139,9 @@ class Example:
             interfaces = interval.InterfaceGet()
 
             network_interface = None
-            for interface in interfaces:
-                if interface.DisplayNameGet() == self.wireless_interface:
-                    network_interface = interface
+            for network_interface in interfaces:
+                if network_interface.DisplayNameGet() == self.wireless_interface:
+                    break
 
             if network_interface is None:
                 print("No interface found for", self.wireless_interface)
@@ -153,7 +159,7 @@ class Example:
 
         self.wireless_endpoint.Lock(False)
 
-        return headers, results
+        return csv_headers, results
 
     def cleanup(self):
         instance = ByteBlower.InstanceGet()
