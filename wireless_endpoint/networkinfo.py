@@ -12,8 +12,8 @@ Wi-Fi monitor it has these differences:
     wireless endpoint is heartbeating. They are thus not 
     the live results.
  *  During a testrun the Wireless Endpoint isn't heartbeating.
-    The polled results thus aren't also updated. You do get the
-    old values though.
+    There are thus alos no updates of the results at this time.
+    You can still retrieve the old values though.
 
 We recommend using the polling method for basic monitoring of
 your Wireless Endpoints. 
@@ -29,14 +29,14 @@ configuration = {
 
     # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
     # on this meetingpoint.
-    'meetingpoint_address': 'byteblower-dev-4100-1.lab.byteblower.excentis.com',
+    'meetingpoint_address': 'byteblower-dev-4100-2.lab.byteblower.excentis.com',
 
     # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
     # configured by meetingpoint_address.
     # Special value: None.  When the UUID is set to None, the example will automatically select the first available
     # wireless endpoint.
     # 'wireless_endpoint_uuid': None,
-    'wireless_endpoint_uuid': '6d9c2347-e6c1-4eea-932e-053801de32eb',
+    'wireless_endpoint_uuid': None,
 
     # Name of the Interface as given by the operating system.
     'wireless_interface': 'Intel(R) Dual Band Wireless-AC 8265',
@@ -67,7 +67,7 @@ class Example:
 
         # If no WirelessEndpoint UUID was given, search an available one.
         if self.wireless_endpoint_uuid is None:
-            self.wireless_endpoint_uuid = self.select_wireless_endpoint_uuid()
+            self.wireless_endpoint_uuid = self.select_an_wireless_endpoint_uuid()
 
         # Get the WirelessEndpoint device
         # We don't need to lock the Wireless Endpoint to get the polling results.
@@ -90,7 +90,7 @@ class Example:
         from byteblowerll.byteblower import NetworkInterface
         assert isinstance(network_interface, NetworkInterface)
 
-        headers = (
+        csv_headers = (
             '"SSID"',
             '"BSSID"',
             '"Channel"',
@@ -100,7 +100,6 @@ class Example:
         results = []
         for _ in range(self.duration_s):
             network_info.Refresh()
-            print(network_interface.DisplayNameGet())
             result = (
                 "\"" + network_interface.WiFiSsidGet() + "\"",
                 "\"" + network_interface.WiFiBssidGet() + "\"",
@@ -108,17 +107,17 @@ class Example:
                 network_interface.WiFiRssiGet(),
                 network_interface.WiFiTxRateGet()
             )
+            print(network_interface.DisplayNameGet(), result)
 
             results.append(result)
             time.sleep(1)
 
         with open("network_info_test.csv", "w") as f:
-            f.write(";".join(headers) + '\n')
+            f.write(";".join(csv_headers) + '\n')
             for result in results:
                 f.write(";".join([str(item) for item in result]) + '\n')
         print("results written to network_info_test.csv")
 
-        self.wireless_endpoint.Lock(False)
         instance.MeetingPointRemove(self.meetingpoint)
 
     def select_an_wireless_endpoint_uuid(self):
