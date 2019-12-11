@@ -2,22 +2,27 @@
 
 
 """
+
 from __future__ import print_function
 import time
 import random
 import datetime
 
 from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved, ConfigError
+
+from highcharts import Highchart
 import os
 import sys
-
+import csv
+import datetime
+from time import mktime
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': '10.10.1.202',
+    'server_address': '10.10.1.204',
 
     # Interface on the server to create a port on.
-    'server_interface': 'trunk-1-2',
+    'server_interface': 'nontrunk-1',
 
     # MAC address of the ByteBlower port which will be generated
     'port_mac_address': '00:bb:01:00:00:01',
@@ -40,8 +45,8 @@ configuration = {
     # Special value: None.  When the UUID is set to None, the example will
     #                       automatically select the first available wireless
     #                       endpoint.
-    'wireless_endpoint_uuid': None,
-    # 'wireless_endpoint_uuid': '37cea3f2-79a8-4fc3-8f6d-2736fcce3313',
+    #'wireless_endpoint_uuid': None,
+    'wireless_endpoint_uuid': 'eda84fd1f0761a6d',
 
     # Name of the WiFi interface to query.
     # Special value: None.  None will search for an interface with type WiFi.
@@ -408,7 +413,7 @@ def write_csv(result_list, filename, first_key, separator=';'):
             f.write(separator.join(items) + "\n")
 
 
-def plot_data(device_name, data):
+def plot_using_matplotlib(device_name, data):
     """
     Plots the data collected by the example using matplotlib
     :param device_name: Name of the device
@@ -473,6 +478,6 @@ if __name__ == '__main__':
     write_csv(example_results, filename=results_file, first_key='timestamp')
     print("Results written to", results_file)
 
-    plot_data(device_name, example_results)
+    plot_using_highcharts(device_name, example_results)
 
     sys.exit(0)
