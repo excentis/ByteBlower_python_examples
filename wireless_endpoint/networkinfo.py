@@ -15,8 +15,12 @@ Wi-Fi monitor it has these differences:
     There are thus alos no updates of the results at this time.
     You can still retrieve the old values though.
 
-We recommend using the polling method for basic monitoring of
-your Wireless Endpoints. 
+We recommend using the polling method for when an indicative
+Wi-Fi statistics is sufficient (e.g. displaying the value to 
+a user).
+
+Another use-case is long term monitoring, where an infrequent
+update doesn't matter either way.
 
 """
 
@@ -39,6 +43,8 @@ configuration = {
     'wireless_endpoint_uuid': None,
 
     # Name of the Interface as given by the operating system.
+    # The script will pick another interface when this one isn't
+    # found.
     'wireless_interface': 'Intel(R) Dual Band Wireless-AC 8265',
 
     # duration in seconds to poll for information
