@@ -32,7 +32,7 @@ try:
 
     print("ByteBlower Server: %s -- %s" % (SERVER_ADDRESS, version_info))
 
-except:
+except (byteblower.DomainError, byteblower.TechnicalError):
     print("Could not connect to the server")
 
 finally:
