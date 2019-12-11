@@ -16,10 +16,14 @@ for the polling approach is in following aspects:
              radio silence you can't communicate with it.
           - A scenario is always locked to a single API connection.
           - It takes a couple Wireless Endpoint heartbeat to start/finish a scenario. 
+
+    * The NetworkMonitor is more complex to use compared to the polling method. 
+       This is especially when you are only interested indiciative values for
+       the Wi-Fi statistics.
   
 We recommend using the NetworkInfoMonitor when you want to collect results:
    * During a test run.
-   * Wish to have a high update-rate.
+   * Wish to have very regular, time-stamped measurements. 
 
 """
 
@@ -159,14 +163,13 @@ class Example:
 
     def select_wireless_endpoint_uuid(self):
         """
-        Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        Finds an available Wireless Endpoint on the MeetingPoint 
+
         :return: a string representing the UUID or None
         """
         from byteblowerll.byteblower import DeviceStatus_Available
 
         for device in self.meetingpoint.DeviceListGet():
-            # is the status Available?
             if device.StatusGet() == DeviceStatus_Available:
                 # yes, return the UUID
                 return device.DeviceIdentifierGet()
