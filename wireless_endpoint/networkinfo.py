@@ -1,17 +1,25 @@
 #!/usr/bin/python
 """"
-This example allows the user to configure a frameblasting flow which transmits data to the wireless endpoint.
+ This example demonstrates polling the Wi-Fi statistics from a Wireless Endpoint.
 
-WirelessEndpoint --> ByteBlowerPort
+The polling method is on of the two ways of the getting this info. Compared to the
+Wi-Fi monitor it has these differences:
+
+ * The Wireless Endpoint stays available for aynone to use.
+    Multple programs can poll the results at the same time.
+ * The methods return immediately. There are no blocking calls.
+ * The returned Wi-Fi statistics are only updated while the 
+    wireless endpoint is heartbeating. They are thus not 
+    the live results.
+ *  No polling results are updated while the Wireless Endpoint is
+    running a test. You are able to get the last one though.
+    
 """
 
 from __future__ import print_function
 import time
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower
-
-# We will use scapy to build the frames, scapy will be imported when needed.
-
 
 configuration = {
 
@@ -58,11 +66,9 @@ class Example:
             self.wireless_endpoint_uuid = self.select_wireless_endpoint_uuid()
 
         # Get the WirelessEndpoint device
+        # We don't need to lock the Wireless Endpoint to get the polling results.
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
         print("Using wireless endpoint", self.wireless_endpoint.DeviceInfoGet().GivenNameGet())
-
-        # Make sure we are the only users for the wireless endpoint
-        self.wireless_endpoint.Lock(True)
 
         device_info = self.wireless_endpoint.DeviceInfoGet()
         network_info = device_info.NetworkInfoGet()
@@ -111,16 +117,15 @@ class Example:
         self.wireless_endpoint.Lock(False)
         instance.MeetingPointRemove(self.meetingpoint)
 
-    def select_wireless_endpoint_uuid(self):
+    def select_an_wireless_endpoint_uuid(self):
         """
-        Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
-        :return: a string representing the UUID or None
+        Finds an available Wireless Endpoint to use.
+
+        :return: a string representing the UUID or None when no device is available.
         """
         from byteblowerll.byteblower import DeviceStatus_Available
 
         for device in self.meetingpoint.DeviceListGet():
-            # is the status Available?
             if device.StatusGet() == DeviceStatus_Available:
                 # yes, return the UUID
                 return device.DeviceIdentifierGet()
