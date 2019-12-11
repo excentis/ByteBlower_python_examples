@@ -40,4 +40,3 @@ finally:
     # This is considered good practise since all resources are released.
     if server is not None:
         bb.ServerRemove(server)
-
