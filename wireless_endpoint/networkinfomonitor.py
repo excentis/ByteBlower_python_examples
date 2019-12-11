@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """"
-This examples collect the Wi-Fi statistics as they change in real-time.
+This example collect the Wi-Fi statistics as they change in real-time.
 
 The get these values we use an Wi-Fi monitor. This approach is different
 for the polling approach is in following aspects:
