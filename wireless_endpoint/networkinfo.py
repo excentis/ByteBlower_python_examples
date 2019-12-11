@@ -11,9 +11,13 @@ Wi-Fi monitor it has these differences:
  * The returned Wi-Fi statistics are only updated while the 
     wireless endpoint is heartbeating. They are thus not 
     the live results.
- *  No polling results are updated while the Wireless Endpoint is
-    running a test. You are able to get the last one though.
-    
+ *  During a testrun the Wireless Endpoint isn't heartbeating.
+    The polled results thus aren't also updated. You do get the
+    old values though.
+
+We recommend using the polling method for basic monitoring of
+your Wireless Endpoints. 
+
 """
 
 from __future__ import print_function
