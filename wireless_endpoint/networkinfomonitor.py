@@ -16,6 +16,7 @@ for the polling approach is in following aspects:
              radio silence you can't communicate with it.
           - A scenario is always locked to a single API connection.
           - It takes a couple Wireless Endpoint heartbeat to start/finish a scenario. 
+          - The collected results are only available after the testrun has finished.
     
     * If your device has multiple Wi-Fi network adapters, the statistics are logged
        simultaneously on all network interfaces. 

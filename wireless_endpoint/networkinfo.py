@@ -8,6 +8,7 @@ Wi-Fi monitor it has these differences:
  * The Wireless Endpoint stays available for aynone to use.
     Multple programs can poll the results at the same time.
  * The methods return immediately. There are no blocking calls.
+    The result values are immediately available.
  * The returned Wi-Fi statistics are only updated while the 
     wireless endpoint is heartbeating. They are thus not 
     the live results.
