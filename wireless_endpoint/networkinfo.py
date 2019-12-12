@@ -6,22 +6,21 @@ The polling method is on of the two ways of the getting this info. Compared to t
 Wi-Fi monitor it has these differences:
 
  * The Wireless Endpoint stays available for aynone to use.
-    Multple programs can poll the results at the same time.
+    Multple programs can poll results at the same time.
  * The methods return immediately. There are no blocking calls.
-    The result values are immediately available.
+    a (cachaed) Wi-Fi value is always available.
  * The returned Wi-Fi statistics are only updated while the 
     wireless endpoint is heartbeating. They are thus not 
     the live results.
- *  During a testrun the Wireless Endpoint isn't heartbeating.
+ * During a testrun the Wireless Endpoint isn't heartbeating.
     There are thus alos no updates of the results at this time.
     You can still retrieve the old values though.
+ * The MeetingPoint implements most of the error handling. That
+    makes this approach much easier to use. 
 
-We recommend using the polling method for when an indicative
+We recommend using the polling method when an indicative
 Wi-Fi statistics is sufficient (e.g. displaying the value to 
 a user).
-
-Another use-case is long term monitoring, where an infrequent
-update doesn't matter either way.
 
 """
 

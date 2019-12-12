@@ -51,13 +51,11 @@ configuration = {
     # 'wireless_endpoint_uuid': '86B6D1A7-72D0-4462-B8D0-ED5655F906CC',
 
     # Name of the Interface as given by the operating system.
-    # 'wireless_interface': 'Intel(R) Dual Band Wireless-AC 8265',
-    # 'wireless_interface': 'Intel(R) Wi-Fi 6 AX200 160MHz',
-    # 'wireless_interface': 'wlan0',
+    # For education purposes, when the interface isn't found we
+    #  we will take any other device.
     'wireless_interface': 'en0',
 
     # duration in seconds to poll for information
-    # 'duration_s': 180,
     'duration_s': 20,
 }
 
@@ -94,7 +92,7 @@ class Example:
         self.wireless_endpoint.ScenarioDurationSet(self.duration_s * 1000000000)  # ns
 
         # Add the monitor to the scenario.
-#       # The Wi-Fi statistics are captured as soon as the scenario starts.
+        # The Wi-Fi statistics are captured as soon as the scenario starts.
         device_info = self.wireless_endpoint.DeviceInfoGet()
         network_info_monitor = device_info.NetworkInfoMonitorAdd()
         
