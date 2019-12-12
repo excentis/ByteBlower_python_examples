@@ -1,7 +1,25 @@
 #!/usr/bin/python
 """"
-This example allows the user to collect network information over time on a
-Wireless Endpoint.
+This example collect the Wi-Fi statistics as they change in real-time.
+
+The get these values we use an Wi-Fi monitor. This approach is different
+for the polling approach is in following aspects:
+
+    * The Wi-Fi statistics are collected at a regular interval,
+      Default values are updated every second, much more frequent
+       than is possible through the polling approach.
+
+    * The Network monitor is always part of a scenario on a Wireless 
+       Endpoint. This has a large impact:
+          - In the same scenario you can add other traffic (TCP or FrameBlasting).
+          - While the scenario is running, the Wireless Endpoint maintains
+             radio silence you can't communicate with it.
+          - A scenario is always locked to a single API connection.
+          - It takes a couple Wireless Endpoint heartbeat to start/finish a scenario. 
+  
+We recommend using the NetworkInfoMonitor when you want to collect results:
+   * During a test run.
+   * Wish to have a high update-rate.
 
 """
 
@@ -10,14 +28,12 @@ import time
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower
 
-# We will use scapy to build the frames, scapy will be imported when needed.
-
 
 configuration = {
 
     # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
     # on this meetingpoint.
-    'meetingpoint_address': '10.10.1.202',
+    'meetingpoint_address': 'byteblower-dev-4100-2.lab.byteblower.excentis.com',
 
     # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
     # configured by meetingpoint_address.
