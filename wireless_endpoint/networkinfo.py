@@ -84,6 +84,10 @@ class Example:
         if self.wireless_endpoint_uuid is None:
             self.wireless_endpoint_uuid = self.select_an_wireless_endpoint_uuid()
 
+        if self.wireless_endpoint_uuid is None:
+            print("The MeetingPoint has no available Wireless Endpoints. Aborting the example.")
+            return
+
         # Get the WirelessEndpoint device
         # We don't need to lock the Wireless Endpoint to get the polling results.
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
