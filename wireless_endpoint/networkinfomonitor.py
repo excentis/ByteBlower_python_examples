@@ -126,40 +126,42 @@ class Example:
         history.Refresh()
 
         # Collect the results from the NetworkInfoMonitor
-        csv_headers = (
-            '"Time"',
-            '"SSID"',
-            '"BSSID"',
-            '"Channel"',
-            '"RSSI (dBm)"',
-            '"Tx Rate (bps)"'
+        headers = (
+            'Time',
+            'SSID',
+            'BSSID',
+            'Channel',
+            'RSSI (dBm)',
+            'Tx Rate (bps)"'
         )
-        results = []
-        for interval in history.IntervalGet():
-            interfaces = interval.InterfaceGet()
+        print(" ".join(headers))
+        # Looping over the collected results.
+        for sample in history.IntervalGet():
 
-            network_interface = None
+            # The moment when this sample was taken.
+            timestamp = sample.TimestampGet()
+
+            # Each sample from the interval incudes a list of all 
+            # interfaces active at the point in time.
+            interfaces = sample.InterfaceGet()
+
             for network_interface in interfaces:
-                if network_interface.DisplayNameGet() == self.wireless_interface:
-                    break
+                # The results for this interface at this moment.
+                is_connected_to_wifi = network_interface.WiFiSsidGet() != ""
+                if is_connected_to_wifi:
+                    print(
+                       timestamp, 
+                       network_interface.DisplayNameGet(),
+                       network_interface.WiFiSsidGet(),
+                       network_interface.WiFiBssidGet(),
+                       network_interface.WiFiChannelGet(),
+                       network_interface.WiFiRssiGet(),
+                       network_interface.WiFiTxRateGet()
+                 )
 
-            if network_interface is None:
-                print("No interface found for", self.wireless_interface)
-
-            result = (
-                interval.TimestampGet(),
-                "\"" + network_interface.WiFiSsidGet() + "\"",
-                "\"" + network_interface.WiFiBssidGet() + "\"",
-                network_interface.WiFiChannelGet(),
-                network_interface.WiFiRssiGet(),
-                network_interface.WiFiTxRateGet()
-            )
-
-            results.append(result)
-
+        # Release the Wireless Endpoint for others to use.
         self.wireless_endpoint.Lock(False)
 
-        return csv_headers, results
 
     def cleanup(self):
         instance = ByteBlower.InstanceGet()
@@ -188,13 +190,7 @@ if __name__ == '__main__':
     example = Example(**configuration)
 
     try:
-        headers, results = example.run()
+        example.run()
     finally:
         example.cleanup()
-
-    with open("network_info_monitor_test.csv", "w") as f:
-        f.write(";".join(headers) + '\n')
-        for result in results:
-            f.write(";".join([str(item) for item in result]) + '\n')
-    print("results written to network_info_monitor_test.csv")
 
