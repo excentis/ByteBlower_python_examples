@@ -1,29 +1,30 @@
 #!/usr/bin/python
 """"
-This example collect the Wi-Fi statistics as they change in real-time.
+This example collects the Wi-Fi statistics as they change in real-time.
+ The values are stored on the Wireless Endpoint and can be retrieved
+ after the test.
 
-The get these values we use an Wi-Fi monitor. This approach is different
-for the polling approach is in following aspects:
+The Wi-Fi monitor is the method to use here. The same Wi-Fi statistics are 
+also availabel in the NetworkInfo (polling approach). There are a couple
+important functional differrences between both: 
 
-    * The Wi-Fi statistics are collected at a regular interval,
-      Default values are updated every second, much more frequent
-       than is possible through the polling approach.
+    * The Monitor collects the Wi-Fi statistics at a regular interval,
+      Default every second. This is much more frequent than the the 
+      polling approach.
 
-    * The Network monitor is always part of a scenario on a Wireless 
+    * The Network monitor is part of a scenario on a Wireless 
        Endpoint. This has a large impact:
           - In the same scenario you can add other traffic (TCP or FrameBlasting).
           - While the scenario is running, the Wireless Endpoint maintains
              radio silence you can't communicate with it.
-          - A scenario is always locked to a single API connection.
-          - It takes a couple Wireless Endpoint heartbeat to start/finish a scenario. 
+          - A device running a scenario is always locked to a single API connection.
+          - It takes a couple Wireless Endpoint heartbeats to start/finish a scenario. 
           - The collected results are only available after the testrun has finished.
     
     * If your device has multiple Wi-Fi network adapters, the statistics are logged
        simultaneously on all network interfaces. 
 
     * The NetworkMonitor is more complex to use compared to the polling method. 
-       This is especially when you are only interested indiciative values for
-       the Wi-Fi statistics.
   
 We recommend using the NetworkInfoMonitor when you want to collect results:
    * During a test run.
