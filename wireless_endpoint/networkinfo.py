@@ -1,26 +1,35 @@
 #!/usr/bin/python
 """"
- This example demonstrates polling the Wi-Fi statistics from a Wireless Endpoint.
+ This example demonstrates polling the Wi-Fi statistics
 
-The polling method is on of the two ways of the getting this info. Compared to the
-Wi-Fi monitor it has these differences:
+ The main goal of the script is teaching how the API works. We will print
+  out the results to screen. For a more involved demo we suggest to 
+  look into the demo folder (toplevel)
 
- * The Wireless Endpoint stays available for aynone to use.
-    Multple programs can poll results at the same time.
- * The methods return immediately. There are no blocking calls.
-    a (cachaed) Wi-Fi value is always available.
- * The returned Wi-Fi statistics are only updated while the 
-    wireless endpoint is heartbeating. They are thus not 
-    the live results.
+ Polling the Network Info is one of the two ways to get the Wi-Fi
+  statistics. The Wi-Fi monitor is the other one. They have following
+  differences:
+
+ * The polling method returns the Wi-Fi statistics cached in the 
+    MeetingPoint. These values are updated every several
+    heartbeats. It can take up to a minute for a change to propagate. 
+
+ * With the Polling method, the Wi-Fi statistics can be retrieved
+    without locking the Wireless Endpoint. The WEP remains available
+    for anyone to use.
+
+ * The polling methods return immediately. There are no blocking calls
+    In addition all error handling is delegated to the MeetingPoint.
+    This makes the polling approach much easier to use.
+
  * During a testrun the Wireless Endpoint isn't heartbeating.
     There are thus alos no updates of the results at this time.
     You can still retrieve the old values though.
- * The MeetingPoint implements most of the error handling. That
-    makes this approach much easier to use. 
 
-We recommend using the polling method when an indicative
-Wi-Fi statistics is sufficient (e.g. displaying the value to 
-a user).
+ We recommend using the polling method when indicative
+  Wi-Fi statistics are sufficient (e.g. displaying the value to 
+  a user), when there's only interest in changes over several
+   minutes (e.g. monitoring).
 
 """
 
@@ -96,7 +105,7 @@ class Example:
         from byteblowerll.byteblower import NetworkInterface
         assert isinstance(network_interface, NetworkInterface)
 
-        csv_headers = (
+        headers = (
             '"SSID"',
             '"BSSID"',
             '"Channel"',
@@ -105,7 +114,11 @@ class Example:
         )
         results = []
         for _ in range(self.duration_s):
+            # Synchronize the local API object with the values 
+            #  cached in the MeetingPoint
             network_info.Refresh()
+
+            # Collect the results and print them out.
             result = (
                 "\"" + network_interface.WiFiSsidGet() + "\"",
                 "\"" + network_interface.WiFiBssidGet() + "\"",
@@ -117,12 +130,6 @@ class Example:
 
             results.append(result)
             time.sleep(1)
-
-        with open("network_info_test.csv", "w") as f:
-            f.write(";".join(csv_headers) + '\n')
-            for result in results:
-                f.write(";".join([str(item) for item in result]) + '\n')
-        print("results written to network_info_test.csv")
 
         instance.MeetingPointRemove(self.meetingpoint)
 
