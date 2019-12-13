@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="generator" content=
+  "HTML Tidy for HTML5 for Linux version 5.2.0">
+  <title>Wireless Endpoint Demo</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content= "width=device-width, initial-scale=1">
+  <link rel="stylesheet" href= "https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+
+  <script src= "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"> </script>
+  <script src= "https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"> </script>
+  <script src= "https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"> </script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+</head>
+<body>
+  <div class="jumbotron text-center">
+    <h1>Wi-Fi statistics</h1>
+    <p>With the ByteBlower Wireless Endpoint.</p>
+  </div>
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col">
+        <div>
+          <ul class="list-group" id='tt'/>
+        </div>
+      </div>
+      <div class="col-10">
+        <div id='jos'>
+          <p>Graph to come</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+<script>
+    function eqSet(as, bs) {
+        if (as.size !== bs.size) return false;
+       for (var a of as){
+           if (!bs.has(a)) return false;
+       }
+       return true;
+    }
+
+   let device_list = ""
+   function create_devices(e) {
+       if(e.data === device_list) {
+           return;
+       }
+       device_list = e.data;
+
+       parsed = JSON.parse(e.data)
+
+       let content = ""
+       for(let ctr = 0; ctr  < parsed.length; ++ctr){
+           let dev = parsed[ctr];
+           let state = dev['state']
+
+           dev_state_txt= ''
+           if(state === 'Unavailable'){
+               dev_state_txt= 'disabled';
+           } if(state === 'Running' || state === 'Armed'){
+               dev_state_txt = 'active disabled';
+           }
+           onclick_action = 'onclick="start_run(' +"'" + dev['uuid'] + "')" + '"'
+           content += '<button type="button" class="list-group-item list-group-item-action ' + dev_state_txt + '" ' + onclick_action + ">" + dev['name']+ '</button>' 
+       }
+       console.log(content)
+       document.getElementById('tt').innerHTML = content 
+   }
+
+   function start_run(dev_id){
+       $.post("start_run", {uuid: dev_id})
+   }
+
+   let myWorker = new Worker('poller');
+   myWorker.onmessage = create_devices; 
+</script>
+
+</html>

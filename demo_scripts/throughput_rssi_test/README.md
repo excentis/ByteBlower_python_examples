@@ -1,0 +1,4 @@
+This demo makes it easy to run a throughput test with
+ the Wireless Endpoints.
+ 
+
