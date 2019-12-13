@@ -25,8 +25,6 @@ def device_status_to_str(state):
         if val == state:
             return name
 
-
-# Why did the MeetingPoint add call get this slow??
 api = ByteBlower.InstanceGet()
 meetingPoint = api.MeetingPointAdd(config['meetingpoint'])
 
