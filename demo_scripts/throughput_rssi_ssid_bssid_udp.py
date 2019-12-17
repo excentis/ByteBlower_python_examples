@@ -1,7 +1,8 @@
 #!/usr/bin/python
 """"
-This example allows the user to configure a frameblasting flow which transmits data to the wireless endpoint.
+This demo script combines UDP traffic with Wi-Fi statistics.
 
+Traffic is being sent from the Wireless Endpoint to a ByteBlowerPort.
 WirelessEndpoint --> ByteBlowerPort
 """
 
@@ -9,17 +10,34 @@ from __future__ import print_function
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower, ConfigError
 
+from byteblowerll.byteblower import DeviceStatus_Available
+from byteblowerll.byteblower import DeviceStatus_Reserved
+from byteblowerll.byteblower import DeviceStatus_Unavailable
+
+
 from scapy.packet import Raw
 import datetime
 import os
 
-
 configuration = {
+    
+    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
+    # configured by meetingpoint_address.
+    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
+    # wireless endpoint.
+    'wireless_endpoint_uuid': '502d62e8-853f-496b-990b-731f25012f33',
+
+    # duration, in nanoseconds
+    # Duration of the session
+    #           sec  milli  micro  nano
+    'duration': 30 * 1000 * 1000 * 1000,
+
+
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': 'byteblower-tp-2100.lab.byteblower.excentis.com',
+    'server_address': 'byteblower-tutorial-1300.lab.byteblower.excentis.com',
 
     # Interface on the server to create a port on.
-    'server_interface': 'trunk-1-1',
+    'server_interface': 'nontrunk-1',
 
     # MAC address of the ByteBlower port which will be generated
     'port_mac_address': '00:bb:01:00:00:01',
@@ -27,6 +45,7 @@ configuration = {
     # DHCP or IP configuration for the ByteBlower port
     # if DHCP, use "dhcp"
     'port_ip_address': 'dhcp',
+
     # if static, use ["ipaddress", "netmask", "gateway"]
     # 'port_ip_address': ['172.16.0.4', '255.255.252.0', '172.16.0.1'],
 
@@ -34,15 +53,7 @@ configuration = {
     # on this meetingpoint.
     # Special value: None.  When the address is set to None, the server_address will be used.
     'meetingpoint_address': None,
-
-    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
-    # configured by meetingpoint_address.
-    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
-    # wireless endpoint.
-    'wireless_endpoint_uuid': None,
-    # 'wireless_endpoint_uuid': 'eda84fd1f0761a6d',
-    # 'wireless_endpoint_uuid': '6d9c2347-e6c1-4eea-932e-053801de32eb',
-
+    
     # Name of the WiFi interface to query.
     # Special value: None.  None will search for an interface with type WiFi.
     # 'wireless_interface': None,
@@ -53,11 +64,6 @@ configuration = {
 
     # Number of frames per second
     'frames_per_second': 7000,
-
-    # duration, in nanoseconds
-    # Duration of the session
-    #           sec  milli  micro  nano
-    'duration': 30 * 1000 * 1000 * 1000,
 
     'udp_srcport': 4096,
     'udp_dstport': 4096,
@@ -148,7 +154,6 @@ class Example:
         port_ipv4 = port_layer3_config.IpGet()
 
         payload = 'a' * (self.frame_size - 42)
-
         scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
 
         payload_array = bytearray(bytes(scapy_udp_payload))
@@ -215,6 +220,11 @@ class Example:
             # Refresh the trigger results
             trigger.ResultHistoryGet().Refresh()
 
+            self.wireless_endpoint.Refresh()
+            status = self.wireless_endpoint.StatusGet()
+            if (status == DeviceStatus_Reserved or
+                status == DeviceStatus_Unavailable):
+                break
             sleep(1)
 
         print("Wait for the device to beat")
@@ -390,7 +400,7 @@ if __name__ == '__main__':
         desired_keys = ['timestamp', 'tx_frames', 'rx_frames', 'loss', 'throughput', 'rssi', 'ssid', 'bssid']
         write_csv(example_results, filename=results_file, keys=desired_keys)
         print("Results written to", results_file)
-
+        print("Results written to html report")
         rssi_plot_highcharts.plot_data(device_name, results_file)
 
     finally:
