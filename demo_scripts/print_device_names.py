@@ -1,4 +1,29 @@
 #!/usr/bin/python
+"""
+    This script lists all Wireless Endpoints registered to
+    a MeetingPoint. 
+
+    We print out the name of the device together with its
+    UUID.
+
+    You can run this script immediately in Python. It has
+    a sole argument, the address of the meeingpoint to 
+    scan.
+
+    Example:
+    =======
+        Input:
+        ---
+        python print_device_names.py 10.8.254.11
+
+        Output:
+        ---
+        POOL-004, 00eb9569-944e-4e76-8ce9-e45332db690e
+        laptop-028, 502d62e8-853f-496b-990b-731f25012f33
+        Samsung Galaxy S7, 77e707a123381475
+
+
+"""
 from __future__ import print_function
 import byteblowerll.byteblower as byteblower
 import sys
@@ -17,8 +42,9 @@ def get_device_info(server_address):
 
         wireless_endpoints = meetingpoint.DeviceListGet()
         for we in wireless_endpoints:
-            fmt = "{NAME} Battery Level: {BATTERYLEVEL}"
-            line = fmt.format(NAME=we.DeviceInfoGet().GivenNameGet(), BATTERYLEVEL=we.DeviceInfoGet().BatteryLevelGet())
+            fmt = "{NAME}, {UUID}"
+            line = fmt.format(NAME=we.DeviceInfoGet().GivenNameGet(),
+                              UUID=we.DeviceIdentifierGet())
             output += line + "\n"
 
     except Exception as e:
@@ -32,9 +58,12 @@ def get_device_info(server_address):
 
 
 if __name__ == '__main__':
+    meetingpoint = 'byteblower-tutorial-1300.lab.byteblower.excentis.com'
     if len(sys.argv) != 2:
-        print("ERROR: Expecting address of the server to connect to:")
-        print("  USAGE: {} <server_address>".format(sys.argv[0]))
-        sys.exit(1)
-
-    print(get_device_info(sys.argv[1]))
+        print("Usage: {} <server_address>".format(sys.argv[0]))
+        print("Connecting to: {}".format(meetingpoint))
+        print()
+    else:    
+        meetingpoint = sys.argv[1]
+        
+    print(get_device_info(meetingpoint))
