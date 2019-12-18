@@ -22,7 +22,7 @@ TEST_MAC = "00ff1c000004"
 
 SERVER = "byteblower-tutorial-1300.lab.byteblower.excentis.com"
 TRUNK_BASE = "trunk-1"  # base of the trunk; e.g. trunk-1 or trunk-2
-
+MAX_PORTS = 48
 
 def fetch_vendor_name(mac):
     """
@@ -53,7 +53,7 @@ def inspect_trunk(server, trunkbase):
     server = byteblower_instance.ServerAdd(server)
     trunkport = trunkbase+"-"
     mapping = []
-    for x in range(1, 49):
+    for x in range(1, MAX_PORTS + 1):
         p = trunkport + str(x)
         port = server.PortCreate(p)
         port_l2 = port.Layer2EthIISet()
