@@ -1,8 +1,20 @@
 """
     This example shows how to ping a modem connected
     to the ByteBlower switch.
-    
-"""
+
+    For educational reasons this example is kept fairly
+    brief. 
+      * The source port is configured through DHCP.
+      * We ping to a fixed IP address. 
+      * The results are printed to stdout.
+
+    All available options on how to configure an IP
+    address to a Byteblower port is found elsewhere.
+
+    Also good remember, a ByteBlower will also respond
+    to Ping messages. It does this as soons as the 
+    IPV4 layer is configured.
+    """
 import time
 import sys
 
