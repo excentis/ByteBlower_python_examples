@@ -21,6 +21,7 @@ import sys
 
 import byteblowerll.byteblower as bb
 
+
 def create_port(server, bb_interface):
     port = server.PortCreate(bb_interface)
 
@@ -32,7 +33,6 @@ def create_port(server, bb_interface):
 
     return port
 
-           
 
 def do_ping(server_address, bb_interface, target_address):
     """
@@ -48,7 +48,7 @@ def do_ping(server_address, bb_interface, target_address):
     icmp = l3.ProtocolIcmpGet()
     ping_session = icmp.SessionAdd()
     ping_session.RemoteAddressSet(target_address)
-    ping_session.EchoLoopIntervalSet(10 ** 9)
+    ping_session.EchoLoopIntervalSet(10**9)
     ping_session.EchoLoopStart()
 
     for ping_cnt in range(5):
@@ -57,8 +57,9 @@ def do_ping(server_address, bb_interface, target_address):
         print("Ping from %s to %s" % (my_ip, target_address))
         print(ping_session.SessionInfoGet().DescriptionGet())
         print('')
- 
+
     api.ServerRemove(server)
+
 
 if __name__ == '__main__':
     if len(sys.argv) != 4:
