@@ -12,15 +12,19 @@ import json
 import urllib2
 
 from byteblowerll.byteblower import ByteBlower
-from byteblowerll.byteblower import DHCPFailed 
-from byteblowerll.byteblower import AddressResolutionFailed 
+from byteblowerll.byteblower import DHCPFailed
+from byteblowerll.byteblower import AddressResolutionFailed
+
 
 def a_mac_address():
-    byte_vals = ["00","bb"] + ["%2x" % random.randint(0,255) for _ in xrange(4)]
+    byte_vals = ["00", "bb"
+                 ] + ["%2x" % random.randint(0, 255) for _ in xrange(4)]
     return ":".join(byte_vals)
+
 
 SERVER = "byteblower-tutorial-3100.lab.byteblower.excentis.com"
 TRUNK_BASE = "trunk-1"  # base of the trunk; e.g. trunk-1 or trunk-2
+
 
 def lookup_vendor_name(mac_address):
     """
@@ -36,6 +40,7 @@ def lookup_vendor_name(mac_address):
     reader = codecs.getreader("utf-8")
     obj = json.load(reader(response))
     return obj['result']['company']
+
 
 def inspect_trunk(server, trunkbase):
     """
@@ -59,7 +64,7 @@ def inspect_trunk(server, trunkbase):
         ports.append(port)
 
     responding_ports = []
-    for a_port in ports:        
+    for a_port in ports:
         try:
             l3 = a_port.Layer3IPv4Get()
             dhcp = l3.ProtocolDhcpGet()
@@ -69,18 +74,20 @@ def inspect_trunk(server, trunkbase):
 
         except DHCPFailed:
             server.PortDestroy(a_port)
-            
+
     for trunk in responding_ports:
         l3 = trunk.Layer3IPv4Get()
         gateway_addr = l3.GatewayGet()
         try:
             mac = l3.Resolve(gateway_addr)
 
-            result = "%s, %s, %s, %s" % (trunk.InterfaceNameGet(), l3.IpGet(), mac, lookup_vendor_name(mac))
+            result = "%s, %s, %s, %s" % (trunk.InterfaceNameGet(), l3.IpGet(),
+                                         mac, lookup_vendor_name(mac))
             print(result)
-        except AddressResolutionFailed:            
+        except AddressResolutionFailed:
             pass
 
         server.PortDestroy(trunk)
+
 
 inspect_trunk(SERVER, TRUNK_BASE)
