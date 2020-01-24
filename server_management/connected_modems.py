@@ -13,6 +13,7 @@ import urllib2
 
 from byteblowerll.byteblower import ByteBlower
 from byteblowerll.byteblower import DHCPFailed 
+from byteblowerll.byteblower import AddressResolutionFailed 
 
 def a_mac_address():
     byte_vals = ["00","bb"] + ["%2x" % random.randint(0,255) for _ in xrange(4)]
@@ -63,6 +64,7 @@ def inspect_trunk(server, trunkbase):
             l3 = a_port.Layer3IPv4Get()
             dhcp = l3.ProtocolDhcpGet()
             dhcp.Perform()
+            l3.ResolveAsync(l3.GatewayGet())
             responding_ports.append(a_port)
 
         except DHCPFailed:
@@ -71,10 +73,13 @@ def inspect_trunk(server, trunkbase):
     for trunk in responding_ports:
         l3 = trunk.Layer3IPv4Get()
         gateway_addr = l3.GatewayGet()
-        mac = l3.Resolve(gateway_addr)
+        try:
+            mac = l3.Resolve(gateway_addr)
 
-        result = "%s, %s, %s, %s" % (trunk.InterfaceNameGet(), l3.IpGet(), mac, lookup_vendor_name(mac))
-        print(result)
+            result = "%s, %s, %s, %s" % (trunk.InterfaceNameGet(), l3.IpGet(), mac, lookup_vendor_name(mac))
+            print(result)
+        except AddressResolutionFailed:            
+            pass
 
         server.PortDestroy(trunk)
 
