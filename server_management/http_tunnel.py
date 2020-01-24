@@ -7,7 +7,11 @@
 
     All HTTP traffic between the your computer and the modem is
     tunneled over the ByteBlower API.
-
+    
+    To keep things easy, we've called this example an http_tunnel.
+    as you'll notice when browsing through the code, there's nothing
+    realling HTTP specific; the tunnel can be used for other 
+    protocols also. E.g. set the remote port to 22 for SSH.
 """
 import time
 import signal 
