@@ -17,8 +17,8 @@ from byteblowerll.byteblower import AddressResolutionFailed
 
 
 def a_mac_address():
-    byte_vals = ["00", "bb"
-                 ] + ["%2x" % random.randint(0, 255) for _ in xrange(4)]
+    byte_vals = (
+        ["00", "bb"] + ["%2x" % random.randint(0, 255) for _ in xrange(4)])
     return ":".join(byte_vals)
 
 
