@@ -10,3 +10,4 @@ This folder has examples to:
 * Who's using the ByteBlower Server.
 * What version does the server run.
 * Which modems are connected the ByteBlower switch
+* Visit the Webpage of the modem.
