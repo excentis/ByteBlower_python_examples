@@ -14,19 +14,15 @@
     Also good remember, a ByteBlower will also respond
     to Ping messages. It does this as soons as the 
     IPV4 layer is configured.
-    """
+
+"""
 import time
 import sys
 
 import byteblowerll.byteblower as bb
 
-BB_SERVER = 'byteblower-tp-4100.lab.byteblower.excentis.com'
-BB_INTERFACE = 'trunk-1-13'
-
-MODEM_IP_ADDR  = '10.8.253.11'
-
 def create_port(server, bb_interface):
-    port = server.PortCreate(BB_INTERFACE)
+    port = server.PortCreate(bb_interface)
 
     l2 = port.Layer2EthIISet()
     l2.MacSet('00-bb-ff-01-02-13')
@@ -39,8 +35,11 @@ def create_port(server, bb_interface):
            
 
 def do_ping(server_address, bb_interface, target_address):
+    """
+        Peforms 5 pings and prints them to stdout.
+    """
     api = bb.ByteBlower.InstanceGet()
-    server = api.ServerAdd(BB_SERVER)
+    server = api.ServerAdd(server_address)
     port = create_port(server, bb_interface)
 
     l3 = port.Layer3IPv4Get()
@@ -48,7 +47,7 @@ def do_ping(server_address, bb_interface, target_address):
 
     icmp = l3.ProtocolIcmpGet()
     ping_session = icmp.SessionAdd()
-    ping_session.RemoteAddressSet(MODEM_IP_ADDR)
+    ping_session.RemoteAddressSet(target_address)
     ping_session.EchoLoopIntervalSet(10 ** 9)
     ping_session.EchoLoopStart()
 
@@ -61,4 +60,15 @@ def do_ping(server_address, bb_interface, target_address):
  
     api.ServerRemove(server)
 
-do_ping(BB_SERVER, BB_INTERFACE, MODEM_IP_ADDR)
+if __name__ == '__main__':
+    if len(sys.argv) != 4:
+        print('This script expects 3 arguments:')
+        print('   <server address> <byteblower interface> <IP to ping>')
+        print(' but got: ' + ', '.join(sys.argv[1:]))
+        sys.exit(-1)
+
+    server_address = sys.argv[1]
+    bb_interface = sys.argv[2]
+    target_address = sys.argv[3]
+
+    do_ping(server_address, bb_interface, target_address)
