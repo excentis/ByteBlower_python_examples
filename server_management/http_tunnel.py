@@ -14,19 +14,18 @@
     protocols also. E.g. set the remote port to 22 for SSH.
 """
 import time
-import signal 
+import signal
 import sys
 
 import byteblowerll.byteblower as bb
-
 
 ## Configuration
 BB_SERVER = 'byteblower-dev-4100-2.lab.byteblower.excentis.com'
 BB_INTERFACE = 'trunk-1-11'
 
-LOCAL_TCP_PORT  = 8080
+LOCAL_TCP_PORT = 8080
 REMOTE_TCP_PORT = 80
-MODEM_IP_ADDR  = '192.168.0.200'
+MODEM_IP_ADDR = '192.168.0.200'
 
 
 ## Cleanup
@@ -35,19 +34,20 @@ def cleanup_on_signal(bb_api, bb_server):
         Cleans up the ByteBlower Server when a signal is 
         invoked.
     """
+
     def cleanup(signum, frame):
         signal.signal(signum, signal.default_int_handler)
         api.ServerRemove(server)
         sys.exit(0)
 
-    interested_signals = ['SIGABRT', 'SIGTERM', 
-                     'SIGINT', 'CTRL_C_EVENT']
+    interested_signals = ['SIGABRT', 'SIGTERM', 'SIGINT', 'CTRL_C_EVENT']
     for a_signal in interested_signals:
-            if hasattr(signal, a_signal):
-                signal_code = getattr(signal, a_signal)
-                signal.signal(signal_code, cleanup)
+        if hasattr(signal, a_signal):
+            signal_code = getattr(signal, a_signal)
+            signal.signal(signal_code, cleanup)
 
-# actual Code 
+
+# actual Code
 api = bb.ByteBlower.InstanceGet()
 server = api.ServerAdd(BB_SERVER)
 cleanup_on_signal(api, server)
@@ -68,12 +68,10 @@ tunnel.RemoteAddressSet(MODEM_IP_ADDR)
 tunnel.RemotePortSet(REMOTE_TCP_PORT)
 
 tunnel.Start()
-print('TCP Tunnel from %s:%d to %s:%d' % 
-        ('localhost', LOCAL_TCP_PORT, 
-         MODEM_IP_ADDR, REMOTE_TCP_PORT))
+print('TCP Tunnel from %s:%d to %s:%d' % ('localhost', LOCAL_TCP_PORT,
+                                          MODEM_IP_ADDR, REMOTE_TCP_PORT))
 
 print('Press ctrl+c to stop the tunnel')
 
 while True:
     time.sleep(1)
-
