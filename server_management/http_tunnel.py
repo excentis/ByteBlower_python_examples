@@ -30,7 +30,7 @@ MODEM_IP_ADDR  = '192.168.0.200'
 
 
 ## Cleanup
-def cleanup_on_signal(bb_api, bb_server)
+def cleanup_on_signal(bb_api, bb_server):
     """
         Cleans up the ByteBlower Server when a signal is 
         invoked.
@@ -68,7 +68,7 @@ tunnel.RemoteAddressSet(MODEM_IP_ADDR)
 tunnel.RemotePortSet(REMOTE_TCP_PORT)
 
 tunnel.Start()
-print('Tunnel active from %s:%d to %s:%d' % 
+print('TCP Tunnel from %s:%d to %s:%d' % 
         ('localhost', LOCAL_TCP_PORT, 
          MODEM_IP_ADDR, REMOTE_TCP_PORT))
 
