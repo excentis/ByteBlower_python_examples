@@ -1,8 +1,15 @@
 """
-    This script will scan all ports of a ByteBlower trunk (1 till 48 ) and try to discover the connected modem.
+    This script discovers what is connected to your ByteBlower.
+    Optionally you can limit which interfaces are scanned. 
 
-    How: It will try to arp 192.168.100.1 on each port which is the default gw ip of a modem (Cable-Modem).
-    The mac-address is translated to a vendor
+    The discovery process is following, on each participating port
+      * Configure the ByteBlower port through DHCP.
+         This gives us not only an IP address but also
+         the address of the gateway for this port.
+      * Get the MAC address of the gateway.
+         This done through ARP.
+      * Lookup up to the MAC to known whom it belongs to
+         We use http://macvendors.co to the vendors.
 """
 from __future__ import print_function
 
@@ -45,7 +52,7 @@ def lookup_vendor_name(mac_address):
         return "MAC lookup API changed"
 
 
-def inspect_trunk(server, trunkbase):
+def inspect_trunk(server, trunkbase =''):
     """
         Inspect a trunk-interface of a server to detect connected modems
     """
