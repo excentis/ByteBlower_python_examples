@@ -6,6 +6,7 @@
 """
 from __future__ import print_function
 
+import sys
 import random
 import codecs
 import json
@@ -15,15 +16,13 @@ from byteblowerll.byteblower import ByteBlower
 from byteblowerll.byteblower import DHCPFailed
 from byteblowerll.byteblower import AddressResolutionFailed
 
-
 def a_mac_address():
+    """
+        Generates a MAC address
+    """
     byte_vals = (
         ["00", "bb"] + ["%2x" % random.randint(0, 255) for _ in xrange(4)])
     return ":".join(byte_vals)
-
-
-SERVER = "byteblower-tutorial-3100.lab.byteblower.excentis.com"
-TRUNK_BASE = "trunk-1"  # base of the trunk; e.g. trunk-1 or trunk-2
 
 
 def lookup_vendor_name(mac_address):
@@ -45,20 +44,17 @@ def lookup_vendor_name(mac_address):
     except KeyError:
         return "MAC lookup API changed"
 
-        
-
 
 def inspect_trunk(server, trunkbase):
     """
         Inspect a trunk-interface of a server to detect connected modems
     """
-
     byteblower_instance = ByteBlower.InstanceGet()
-
     server = byteblower_instance.ServerAdd(server)
+
     ports = []
     for an_bb_interface in server.InterfaceNamesGet():
-        if not TRUNK_BASE in an_bb_interface:
+        if not an_bb_interface.startswith(trunkbase):
             continue
 
         port = server.PortCreate(an_bb_interface)
@@ -77,23 +73,37 @@ def inspect_trunk(server, trunkbase):
             dhcp.Perform()
             l3.ResolveAsync(l3.GatewayGet())
             responding_ports.append(a_port)
-
         except DHCPFailed:
             server.PortDestroy(a_port)
 
-    for trunk in responding_ports:
-        l3 = trunk.Layer3IPv4Get()
+    for a_port in responding_ports:
+        l3 = a_port.Layer3IPv4Get()
         gateway_addr = l3.GatewayGet()
         try:
-            mac = l3.Resolve(gateway_addr)
+            mac_gw = l3.Resolve(gateway_addr)
+            vendor_string = lookup_vendor_name(mac_gw)
 
-            result = "%s, %s, %s, %s" % (trunk.InterfaceNameGet(), l3.IpGet(),
-                                         mac, lookup_vendor_name(mac))
-            print(result)
+            result_format = "%s, %s, %s, %s"
+            print(result_format % (a_port.InterfaceNameGet(), l3.IpGet(),
+                                    mac_gw, vendor_string))
         except AddressResolutionFailed:
             pass
 
-        server.PortDestroy(trunk)
+        server.PortDestroy(a_port)
 
+if __name__ == "__main__":
+    if not (2 <= len(sys.argv) <= 3):
+        print('Expects at least arguments: <server address>')
+        print(' An optional second argument allows you to filter the ports you whish to scan')
+        print (' Got following arguments: ' + ', '.join(sys.argv[1:]))
 
-inspect_trunk(SERVER, TRUNK_BASE)
+        sys.exit(-1)
+
+    server = sys.argv[1]
+    if len(sys.argv) == 3:
+        base_string = sys.argv[2]
+        print('Using base_string ' + base_string)
+    else:
+        base_string = ''
+
+    inspect_trunk(server, base_string)
