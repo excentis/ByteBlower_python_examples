@@ -41,9 +41,6 @@ configuration = {
     # Special value: None: the server will select one automatically
     'port_tcp_port': None,
 
-    # TCP port for the HTTP Client
-    'wireless_endpoint_tcp_port': 4096,
-
     # HTTP Method
     # HTTP Method can be GET or PUT
     # - GET: Standard HTTP download, we retrieve data from the web server
@@ -74,7 +71,6 @@ class Example:
 
         self.wireless_endpoint_uuid_list = kwargs.pop('wireless_endpoint_uuids', [])
         self.port_tcp_port = kwargs.pop('port_tcp_port', 80)
-        self.wireless_endpoint_tcp_port = kwargs.pop('wireless_endpoint_tcp_port')
 
         # Helper function, we can use this to parse the HTTP Method to the
         # enumeration used by the API
@@ -118,14 +114,6 @@ class Example:
         print("Created port", self.port.DescriptionGet())
 
     def __setup_http_server(self):
-        # duration of the samples taken. (nanoseconds)
-        sample_duration = 100000000
-
-        # number of samples to take:
-        # ( test_duration / sample_duration) is just enough, so we are doubling
-        # this so we have more than enough
-        sample_count = 2 * (self.duration / sample_duration)
-
         # Configure the HTTP server, running on the ByteBlower port.
         http_server = self.port.ProtocolHttpServerAdd()
 
@@ -136,11 +124,6 @@ class Example:
         # Configure the receive window.
         http_server.ReceiveWindowScalingEnable(True)
         http_server.ReceiveWindowScalingValueSet(7)
-
-        # Tell the ByteBlower to sample every sample_duration and keep up to
-        # sample_count samples (see top of this function)
-        http_server.HistorySamplingIntervalDurationSet(sample_duration)
-        http_server.HistorySamplingBufferLengthSet(sample_count)
 
         # A HTTP server will not listen for new connections as long it is not
         # started.  You can compare it to e.g. Apache or nginx, it won't accept
@@ -300,7 +283,8 @@ class Example:
         # No device found, return None
         return devices
 
-    def collect_result(self, http_session):
+    @staticmethod
+    def collect_result(http_session):
         history = http_session.ResultHistoryGet()
         history.Refresh()
         cumulative = history.CumulativeLatestGet()
