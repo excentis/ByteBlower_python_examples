@@ -1,6 +1,6 @@
 """
     This script discovers what is connected to your ByteBlower.
-    Optionally you can limit which interfaces are scanned. 
+    Optionally you can limit which interfaces are scanned.
 
     The discovery process is following, on each participating port
       * Configure the ByteBlower port through DHCP.
@@ -22,6 +22,7 @@ import urllib2
 from byteblowerll.byteblower import ByteBlower
 from byteblowerll.byteblower import DHCPFailed
 from byteblowerll.byteblower import AddressResolutionFailed
+
 
 def a_mac_address():
     """
@@ -52,7 +53,7 @@ def lookup_vendor_name(mac_address):
         return "MAC lookup API changed"
 
 
-def inspect_trunk(server, trunkbase =''):
+def inspect_trunk(server, trunkbase=''):
     """
         Inspect a trunk-interface of a server to detect connected modems
     """
@@ -92,11 +93,12 @@ def inspect_trunk(server, trunkbase =''):
 
             result_format = "%s, %s, %s, %s"
             print(result_format % (a_port.InterfaceNameGet(), l3.IpGet(),
-                                    mac_gw, vendor_string))
+                  mac_gw, vendor_string))
         except AddressResolutionFailed:
             pass
 
         server.PortDestroy(a_port)
+
 
 if __name__ == "__main__":
     if not (2 <= len(sys.argv) <= 3):

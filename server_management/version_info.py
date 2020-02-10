@@ -1,13 +1,13 @@
 """
-    Shows which version the ByteBlower Server runs. 
+    Shows which version the ByteBlower Server runs.
     It requires the ByteBlower server address as argument.
 
     As example:
      > python version_info.py byteblower-tutorial-1300.lab.byteblower.excentis.com
 
     This prints out following:
-         ByteBlower Server: byteblower-tutorial-1300.lab.byteblower.excentis.com -- 2.10.2
-"""    
+     ByteBlower Server: byteblower-tutorial-1300.lab.byteblower.excentis.com -- 2.10.2
+"""
 
 
 import byteblowerll.byteblower as byteblower

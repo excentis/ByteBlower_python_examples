@@ -6,8 +6,8 @@
 
     As example:
      > python bb_users.py byteblower-tutorial-1300.lab.byteblower.excentis.com
-     
-    
+
+
     This example will print out the folowing list
         # Interface name, user_name
         nontrunk-1, 'pieter.v@laptop-019'
@@ -15,7 +15,7 @@
         trunk-1-15, 'excentis@laptop-030'
         trunk-1-45, 'excentis@laptop-030'
 
-"""    
+"""
 
 import byteblowerll.byteblower as byteblower
 import sys
