@@ -33,42 +33,49 @@ We recommend using the NetworkInfoMonitor when you want to collect results:
 """
 
 from __future__ import print_function
+
+import datetime
 import time
+
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower
 
-
 configuration = {
 
-    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
-    # on this meetingpoint.
+    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless
+    # endpoint *must* be registered on this meetingpoint.
     'meetingpoint_address': 'byteblower-dev-4100-2.lab.byteblower.excentis.com',
 
-    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
-    # configured by meetingpoint_address.
-    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
-    # wireless endpoint.
-    'wireless_endpoint_uuid': None,
+    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless
+    # endpoint *must* be registered to the meetingpoint configured by
+    # meetingpoint_address.
+    # Default: The example will automatically select the first available
+    #          wireless endpoint.
     # 'wireless_endpoint_uuid': '86B6D1A7-72D0-4462-B8D0-ED5655F906CC',
 
     # Name of the Interface as given by the operating system.
     # For education purposes, when the interface isn't found we
-    #  we will take any other device.
+    # will take any other device.
     'wireless_interface': 'en0',
 
     # duration in seconds to poll for information
-    'duration_s': 20,
+    'duration': datetime.timedelta(seconds=20),
+
+    # resolution of the snapshots in the history.
+    # 'interval_duration': datetime.timedelta(seconds=1)
+    'interval_duration': datetime.timedelta(milliseconds=200)
 }
 
 
 class Example:
     def __init__(self, **kwargs):
 
-        self.meetingpoint_address = kwargs['meetingpoint_address']
+        self.meetingpoint_address = kwargs.pop('meetingpoint_address')
 
-        self.wireless_endpoint_uuid = kwargs['wireless_endpoint_uuid']
+        self.wireless_endpoint_uuid = kwargs.pop('wireless_endpoint_uuid', None)
         self.wireless_interface = kwargs['wireless_interface']
-        self.duration_s = kwargs['duration_s']
+        self.duration = kwargs.pop('duration', datetime.timedelta(seconds=10))
+        self.interval_duration = kwargs.pop('interval_duration', datetime.timedelta(seconds=10))
 
         self.meetingpoint = None
         self.wireless_endpoint = None
@@ -90,12 +97,18 @@ class Example:
 
         # The network monitor is part of scenario.
         self.wireless_endpoint.Lock(True)
-        self.wireless_endpoint.ScenarioDurationSet(self.duration_s * 1000000000)  # ns
+        self.wireless_endpoint.ScenarioDurationSet(int(self.duration.total_seconds() * 1000000000))  # ns
 
         # Add the monitor to the scenario.
         # The Wi-Fi statistics are captured as soon as the scenario starts.
         device_info = self.wireless_endpoint.DeviceInfoGet()
         network_info_monitor = device_info.NetworkInfoMonitorAdd()
+
+        # We want to have history samples every interval_duration seconds.
+        # The Wireless Endpoint will take new snapshot every
+        # interval_duration_ns.
+        interval_duration_ns = int(self.interval_duration.total_seconds() * 1000000000)
+        network_info_monitor.ResultHistoryGet().SamplingIntervalDurationSet(interval_duration_ns)
         
         # Start the test-run.
         print("Starting the wireless endpoint")
@@ -110,7 +123,7 @@ class Example:
 
         # Wait for the test to finish
         print('Waiting for the wireless endpoint to finish the test')
-        time.sleep(self.duration_s)
+        time.sleep(self.duration.total_seconds())
 
         # Wait for the device to start beating again.
         # Default heartbeat interval is 1 seconds, so lets wait for 2 beats
@@ -141,7 +154,7 @@ class Example:
             # The moment when this sample was taken.
             timestamp = sample.TimestampGet()
 
-            # Each sample from the interval incudes a list of all 
+            # Each sample from the interval includes a list of all
             # interfaces active at the point in time.
             interfaces = sample.InterfaceGet()
 
@@ -157,14 +170,32 @@ class Example:
                        network_interface.WiFiChannelGet(),
                        network_interface.WiFiRssiGet(),
                        network_interface.WiFiTxRateGet()
-                 )
+                    )
 
-        # Release the Wireless Endpoint for others to use.
-        self.wireless_endpoint.Lock(False)
+        return self.collect_results(history)
 
+    @staticmethod
+    def collect_result_for_snapshot(snapshot):
+        return {
+            'timestamp': snapshot.TimestampGet(),
+        }
+
+    def collect_results(self, history):
+
+        result = {
+            'snapshot_interval': datetime.timedelta(microseconds=history.SamplingIntervalDurationGet()/1000),
+            'snapshots': []
+        }
+
+        for sample in history.IntervalGet():
+            result['snapshots'].append(self.collect_result_for_snapshot(sample))
+
+        return result
 
     def cleanup(self):
         instance = ByteBlower.InstanceGet()
+
+        self.wireless_endpoint.Lock(False)
 
         if self.meetingpoint is not None:
             instance.MeetingPointRemove(self.meetingpoint)
@@ -193,4 +224,3 @@ if __name__ == '__main__':
         example.run()
     finally:
         example.cleanup()
-
