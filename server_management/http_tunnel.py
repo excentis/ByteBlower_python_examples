@@ -1,5 +1,5 @@
 """
-    You can use the ByteBlower API to access systems connected to 
+    You can use the ByteBlower API to access systems connected to
     the traffic interfaces.
 
     As an example, with this script you can browse to the webpage
@@ -7,10 +7,10 @@
 
     All HTTP traffic between the your computer and the modem is
     tunneled over the ByteBlower API.
-    
+
     To keep things easy, we've called this example an http_tunnel.
     as you'll notice when browsing through the code, there's nothing
-    realling HTTP specific; the tunnel can be used for other 
+    realling HTTP specific; the tunnel can be used for other
     protocols also. E.g. set the remote port to 22 for SSH.
 """
 import time
@@ -19,7 +19,7 @@ import sys
 
 import byteblowerll.byteblower as bb
 
-## Configuration
+# Configuration
 BB_SERVER = 'byteblower-dev-4100-2.lab.byteblower.excentis.com'
 BB_INTERFACE = 'trunk-1-11'
 
@@ -27,11 +27,12 @@ LOCAL_TCP_PORT = 8080
 REMOTE_TCP_PORT = 80
 MODEM_IP_ADDR = '192.168.0.200'
 
+# Script
 
-## Cleanup
+
 def cleanup_on_signal(bb_api, bb_server):
     """
-        Cleans up the ByteBlower Server when a signal is 
+        Cleans up the ByteBlower Server when a signal is
         invoked.
     """
 
