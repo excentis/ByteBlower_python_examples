@@ -101,16 +101,6 @@ class Example:
 
         self.duration = kwargs.pop('duration')
 
-        # Number of samples per second
-        self.sample_resolution = 1
-        # duration of the samples taken. (nanoseconds)
-        self.sample_duration = int(1000000000 / self.sample_resolution)
-
-        # number of samples to take:
-        # ( test_duration / sample_duration) is just enough, so we are doubling
-        # this so we have more than enough
-        self.sample_count = int(2 * (self.duration / self.sample_duration))
-
         self.server = None
         self.port = None
         self.meetingpoint = None
@@ -256,6 +246,11 @@ class Example:
         return video_client
 
     def run(self):
+        """Runs the example
+
+        :return: a list of dicts with the results
+        :rtype: list
+        """
 
         # Configure the HTTP server, running on the ByteBlower port.
         video_server = self._create_video_server()
@@ -305,16 +300,19 @@ class Example:
                 return device.DeviceIdentifierGet()
 
         # No device found, return None
+        print("No device available!")
         return None
 
 
 if __name__ == '__main__':
     with Example(**configuration) as example:
+        # Plot the data using Highcharts
+        from demo_scripts.plotting import video
+
         # Collect some information
         selected_device_name = example.wireless_endpoint.DeviceInfoGet().GivenNameGet()
         example_results = example.run()
 
-        from plotting import video
         video.plot_data(selected_device_name, example_results, "video_testing.html")
 
     sys.exit(0)
