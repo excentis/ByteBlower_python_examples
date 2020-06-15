@@ -19,13 +19,14 @@ from time import sleep
 
 from byteblowerll.byteblower import ByteBlower
 
-
 from scapy.all import Raw, Ether, IP, ICMP
 
+
 def create_mac_address():
-    byte_val = ['00', 'bb'] + ['%02x' % random.randint(0,255) for _ in range(6)]
+    byte_val = ['00', 'bb'
+                ] + ['%02x' % random.randint(0, 255) for _ in range(6)]
     return ':'.join(byte_val)
-  
+
 
 def create_port(server, bb_interface_name):
 
@@ -45,15 +46,16 @@ def test_connection(src, dst, speed):
     src_mac = src.Layer2EthIIGet().MacGet()
     dst_mac = src.Layer3IPv4Get().Resolve(dst_addr)
 
-    echo_trigger= dst.RxTriggerBasicAdd()
+    echo_trigger = dst.RxTriggerBasicAdd()
     echo_trigger.FilterSet("icmp[icmptype] == icmp-echo")
 
     reply_trigger = src.RxTriggerBasicAdd()
     reply_trigger.FilterSet("icmp[icmptype] == icmp-echoreply")
 
-
     stream = src.TxStreamAdd()
-    sc_frame = Ether(src=src_mac, dst=dst_mac) / IP(src=src_addr, dst=dst_addr)/ICMP() /Raw("AA" * 60)
+    sc_frame = Ether(
+        src=src_mac, dst=dst_mac) / IP(
+            src=src_addr, dst=dst_addr) / ICMP() / Raw("AA" * 60)
     frameContent = bytearray(bytes(sc_frame))
     hexbytes = ''.join((format(b, "02x") for b in frameContent))
     frame_size = len(hexbytes) / 2
@@ -61,18 +63,18 @@ def test_connection(src, dst, speed):
 
     frame = stream.FrameAdd()
     frame.BytesSet(hexbytes)
-    
-    gap = (frame_size + frame_overhead) /float(speed) 
+
+    gap = (frame_size + frame_overhead) / float(speed)
     stream.InterFrameGapSet(int(1e9 * gap))
     duration = 10
     n_frames = int(duration / gap)
     stream.NumberOfFramesSet(n_frames)
 
     stream.Start()
-    print("Waiting for %.2f sec" % ( duration))
+    print("Waiting for %.2f sec" % (duration))
     time.sleep(duration)
     time.sleep(0.2)
-    
+
     stream.Stop()
 
     echo_trigger.ResultGet().Refresh()
@@ -85,30 +87,29 @@ def test_connection(src, dst, speed):
     src.RxTriggerBasicRemove(reply_trigger)
     src.TxStreamRemove(stream)
 
-    return (n_frames, 1/gap, rx_echo, rx_reply) 
+    return (n_frames, 1 / gap, rx_echo, rx_reply)
 
 
 if "__main__" == __name__:
 
-    server_address = sys.argv[1] #'byteblower-tp-3100.lab.byteblower.excentis.com'
+    server_address = sys.argv[
+        1]  #'byteblower-tp-3100.lab.byteblower.excentis.com'
     byteblower_instance = ByteBlower.InstanceGet()
     server = byteblower_instance.ServerAdd(server_address)
 
-    src = create_port(server, sys.argv[2])#'trunk-1-49')
-    dst = create_port(server, sys.argv[3])#'trunk-1-50')
+    src = create_port(server, sys.argv[2])  #'trunk-1-49')
+    dst = create_port(server, sys.argv[3])  #'trunk-1-50')
     a_mbit = 1e6
 
     speed = 999
     if len(sys.argv) == 5:
         speed = float(sys.argv[4])
 
-    n_req, fps, rx_echo, rx_replies = test_connection(src,dst, speed * a_mbit)
+    n_req, fps, rx_echo, rx_replies = test_connection(src, dst, speed * a_mbit)
     summary_txt = """
     Send out %d Ping requests at %d Mbit/s (%.2f requests a second)
     %d (%.1f %% ) were received at the destination.
     %d (%.1f %% ) were answered at the source.
-    """ % (n_req, speed, fps,
-            rx_echo, (100. * rx_echo) / n_req,
-            rx_replies, (100. * rx_replies) / n_req)
+    """ % (n_req, speed, fps, rx_echo, (100. * rx_echo) / n_req, rx_replies,
+           (100. * rx_replies) / n_req)
     print(summary_txt)
-           
