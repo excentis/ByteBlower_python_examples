@@ -101,6 +101,10 @@ def test_connection(src, dst, speed):
 
 
 if "__main__" == __name__:
+    if not 4 <= len(sys.argv) <= 5:
+        print(__doc__)
+        print("Wrong number of arguments")
+        sys.exit(-1)
 
     server_address = sys.argv[
         1]  #'byteblower-tp-3100.lab.byteblower.excentis.com'
