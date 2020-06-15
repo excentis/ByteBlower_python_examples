@@ -9,6 +9,16 @@
       - The speed to send out the traffic, expressed in Mbit/s. The parameter is optional, default
           speed is 1000 Mbit/s
 
+    An example input and associated output are shown in the lines below.
+
+     $ python ping_flood.py byteblower.lab.excentis.com trunk-1-86 nontrunk-1 10
+
+     > Waiting for 10.00 sec
+     >
+     > Send out 67204 Ping requests at 10 Mbit/s (6720.43 requests a second)
+     > 19042 (28.3 % ) were received at the destination.
+     > 7737 (11.5 % ) were answered at the source.
+
     It's a demonstration script. To keep things simple, the ByteBlower
     interfaces are configured using DHCP. 
 """
@@ -64,7 +74,7 @@ def test_connection(src, dst, speed):
     frame = stream.FrameAdd()
     frame.BytesSet(hexbytes)
 
-    gap = (frame_size + frame_overhead) / float(speed)
+    gap = ((frame_size + frame_overhead)  * 8.)/ speed
     stream.InterFrameGapSet(int(1e9 * gap))
     duration = 10
     n_frames = int(duration / gap)
