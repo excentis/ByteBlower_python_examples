@@ -1,12 +1,17 @@
 """
     A simple example of NATDiscovery between ByteBlower ports.
+
+    To discover the public IP address we will send a single packet
+    upstream, capture this packet at the WAN side and finally
+    pick it apart.
     
     This example demonstrates:
-       * How to transmit a single packet custom packet.
-       * How to capture this packet and dissect it with SCAPI. 
-       * Basic ByteBlower configuration.
+       * How to transmit a single custom packet.
+       * How to capture this packet and dissect it with SCAPY. 
 
-    We assume that the ByteBlowers are configured through DHCP.
+    In this script we assume that ByteBlower ports are configured through DHCP.
+    To keep things easy we'll also assume that no one else is using
+    these ByteBlower interfaces.
 """
 
 import byteblowerll.byteblower as byteblower
@@ -44,6 +49,12 @@ def create_port(interface, mac_addr):
 wan_port = create_port(WAN_BB_INTERFACE, WAN_MAC)
 wan_ip = wan_port.Layer3IPv4Get().IpGet()
 
+# Immediately start with capturing trtaffic.
+cap = wan_port.RxCaptureBasicAdd()
+cap.FilterSet('ip and udp')
+cap.Start()
+
+# Next configure the probing traffic.
 lan_port = create_port(LAN_BB_INTERFACE, LAN_MAC)
 lan_ip = lan_port.Layer3IPv4Get().IpGet()
 
@@ -59,11 +70,6 @@ sc_frame = (Ether(src=LAN_MAC, dst=resolved_mac) / IP(
 frameContent = bytearray(bytes(sc_frame))
 hexbytes = ''.join((format(b, "02x") for b in frameContent))
 
-# Prepare for receiving the response
-cap = wan_port.RxCaptureBasicAdd()
-cap.FilterSet('ip and udp')
-cap.Start()
-
 # Send a single Probing frame.
 bb_frame.BytesSet(hexbytes)
 stream.NumberOfFramesSet(1)
@@ -71,8 +77,7 @@ stream.InterFrameGapSet(1000 * 1000)  # 1 millisecond in nanos.
 
 stream.Start()
 
-# Wait for the response.
-
+# Stop as soon as you receive any response.
 while True:
     sniffed = cap.ResultGet()
     sniffed.Refresh()
@@ -82,12 +87,10 @@ while True:
 
     time.sleep(0.01)
 
+# The Capture needs to stopped explicitly.
 cap.Stop()
 
 # Process the response: retrieve all packets.
-stream.ResultHistoryGet().Refresh()
-out_time = stream.ResultHistoryGet().CumulativeLatestGet().TimestampLastGet()
-
 for f in sniffed.FramesGet():
     data = bytearray(f.BufferGet())
     raw = Ether(data)
