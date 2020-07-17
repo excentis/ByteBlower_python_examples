@@ -91,7 +91,7 @@ stream.ResultHistoryGet().Refresh()
 out_time = stream.ResultHistoryGet().CumulativeLatestGet().TimestampLastGet()
 
 for f in sniffed.FramesGet():
-    data = ''.join([chr(b) for b in f.BufferGet()])
+    data = bytearray(f.BufferGet())
     raw = Ether(data)
     if IP in raw:
         discovered_ip = raw['IP'].getfieldval('src')
