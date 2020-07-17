@@ -15,7 +15,7 @@ import time
 
 # Minimal config parameters.
 # Adapt to your setup when necessary.
-SERVER_ADDRESS = 'byteblower-tutorial-1300.lab.byteblower.excentis.com'
+SERVER_ADDRESS = 'byteblower-tutorial-3100.lab.byteblower.excentis.com'
 
 UDP_SRC_PORT = 9000
 UDP_DEST_PORT = 1000
@@ -24,8 +24,7 @@ WAN_MAC = '00:BB:23:22:55:12'
 WAN_BB_INTERFACE = 'nontrunk-1'
 
 LAN_MAC = '00:BB:23:21:55:13'
-LAN_BB_INTERFACE = 'trunk-1-45'
-
+LAN_BB_INTERFACE = 'trunk-1-79'
 
 # ByteBlower part of the test.
 api = byteblower.ByteBlower.InstanceGet()
@@ -53,20 +52,19 @@ resolved_mac = lan_port.Layer3IPv4Get().Resolve(wan_ip)
 
 stream = lan_port.TxStreamAdd()
 bb_frame = stream.FrameAdd()
-sc_frame = (Ether(src=LAN_MAC, dst=resolved_mac) / 
-            IP(src=lan_ip, dst=wan_ip)/
-            UDP(dport=UDP_DEST_PORT, sport=UDP_SRC_PORT)/ 
+sc_frame = (Ether(src=LAN_MAC, dst=resolved_mac) / IP(
+    src=lan_ip, dst=wan_ip) / UDP(dport=UDP_DEST_PORT, sport=UDP_SRC_PORT) /
             'Excentis NAT Discovery packet')
 
 frameContent = bytearray(bytes(sc_frame))
 hexbytes = ''.join((format(b, "02x") for b in frameContent))
 
-# Prepare for receiving the response 
+# Prepare for receiving the response
 cap = wan_port.RxCaptureBasicAdd()
 cap.FilterSet('ip and udp')
 cap.Start()
 
-# Send a single Probing frame. 
+# Send a single Probing frame.
 bb_frame.BytesSet(hexbytes)
 stream.NumberOfFramesSet(1)
 stream.InterFrameGapSet(1000 * 1000)  # 1 millisecond in nanos.
@@ -97,7 +95,7 @@ for f in sniffed.FramesGet():
         discovered_ip = raw['IP'].getfieldval('src')
         print('Discovered IP: %s' % discovered_ip)
         break
-else:       
+else:
     print('No packet received')
 
 # Cleanup the Server. The API will implicitly clean up
