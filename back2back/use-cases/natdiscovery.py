@@ -29,7 +29,7 @@ WAN_MAC = '00:BB:23:22:55:12'
 WAN_BB_INTERFACE = 'nontrunk-1'
 
 LAN_MAC = '00:BB:23:21:55:13'
-LAN_BB_INTERFACE = 'trunk-1-79'
+LAN_BB_INTERFACE = 'trunk-1-81'
 
 # ByteBlower part of the test.
 api = byteblower.ByteBlower.InstanceGet()
@@ -49,15 +49,16 @@ def create_port(interface, mac_addr):
 wan_port = create_port(WAN_BB_INTERFACE, WAN_MAC)
 wan_ip = wan_port.Layer3IPv4Get().IpGet()
 
+lan_port = create_port(LAN_BB_INTERFACE, LAN_MAC)
+lan_ip = lan_port.Layer3IPv4Get().IpGet()
+
 # Immediately start with capturing trtaffic.
 cap = wan_port.RxCaptureBasicAdd()
 cap.FilterSet('ip and udp')
 cap.Start()
 
-# Next configure the probing traffic.
-lan_port = create_port(LAN_BB_INTERFACE, LAN_MAC)
-lan_ip = lan_port.Layer3IPv4Get().IpGet()
 
+# Next configure the probing traffic.
 # Create the requested packet.
 resolved_mac = lan_port.Layer3IPv4Get().Resolve(wan_ip)
 
@@ -94,9 +95,11 @@ cap.Stop()
 for f in sniffed.FramesGet():
     data = bytearray(f.BufferGet())
     raw = Ether(data)
-    if IP in raw:
+    if IP in raw and UDP in raw:
         discovered_ip = raw['IP'].getfieldval('src')
+        discovered_udp_port = raw['UDP'].getfieldval('sport')
         print('Discovered IP: %s' % discovered_ip)
+        print('Discovered UDP port: %s' % discovered_udp_port)
         break
 else:
     print('No packet received')
