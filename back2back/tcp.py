@@ -32,6 +32,9 @@ configuration = {
         # if staticv6, use ["ipaddress", prefixlength]
         # 'ip': ['3000:3128::24', '64'],
 
+        # Optionally you can define a VLAN.
+        'vlan': 2
+
         # TCP port number to be used by the HTTP connection.  On the HTTP server,
         # this will be the port on which the server listens.
         'tcp_port': 4096
@@ -203,6 +206,11 @@ class Example:
         port = self.server.PortCreate(config['interface'])
         port_l2 = port.Layer2EthIISet()
         port_l2.MacSet(config['mac'])
+
+        if 'vlan' in config:
+            vlan_id = int(config['vlan'])
+            port_l25 = port.Layer25VlanAdd()
+            port_l25.IDSet(vlan_id)
 
         ip_config = config['ip']
         if not isinstance(ip_config, list):
