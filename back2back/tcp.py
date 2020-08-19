@@ -17,7 +17,7 @@ configuration = {
 
     # Configuration for the first ByteBlower port.  Will be used as HTTP server.
     'port_1_config': {
-        'interface': 'trunk-1-13',
+        'interface': 'trunk-1-20',
         'mac': '00:bb:01:00:00:01',
         # IP configuration for the ByteBlower Port.
         # Options are 'DHCPv4', 'DHCPv6', 'SLAAC', 'static'
@@ -33,7 +33,7 @@ configuration = {
         # 'ip': ['3000:3128::24', '64'],
 
         # Optionally you can define a VLAN.
-        'vlan': 2
+        'vlan': 2,
 
         # TCP port number to be used by the HTTP connection.  On the HTTP server,
         # this will be the port on which the server listens.
