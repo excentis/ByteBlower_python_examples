@@ -2,7 +2,13 @@
 Basic IPv4 Example for the ByteBlower Python API.
 All examples are garanteed to work with Python 2.7 and above
 
-Copyright 2018, Excentis N.V.
+This example show how to use TCP with ByteBlower. This all happens
+in the run method of the Example class.
+
+The ByteBlower port configuration is very flexible, you can configure
+ * IPv4 (static or DHCP)
+ * IPv6 (static, SLAAC, or DHCP)
+ * Optionially add a VLAN.
 """
 # Needed for python2 / python3 print function compatibility
 from __future__ import print_function
