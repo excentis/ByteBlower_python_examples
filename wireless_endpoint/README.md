@@ -37,8 +37,3 @@
 - networkinfomonitory.py
 
   Explains the general use of the NetworkInfoMonitor object
-  
-- rssi_vs_throughput.py
-
-  Uses a wireless endpoint to map the possible TCP throughput on the RSSI reported by the device.
-  Stores the collected information in a CSV file.
