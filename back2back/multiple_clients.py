@@ -146,7 +146,7 @@ class Example:
         while clients_still_running and still_has_time:
             time.sleep(1)
             duration = (time.time() - start_moment) 
-            print('Waiting for clients to finish: %.2fs' % (duration))
+            print('%.2fs :: Waiting for clients to finish.' % (duration))
 
             still_has_time = duration < (max_duration + extra_time)
             clients_still_running = False 
@@ -159,8 +159,17 @@ class Example:
 
         http_server.Stop()
 
-        print("Connected clients     : {} ".format(len(http_client.ClientIdentifiersGet())))
 
+        print("")
+        print("HTTP Server info     ")
+        print("-" * 10)
+
+        print("Connected clients     : {} ".format(len(http_server.ClientIdentifiersGet())))
+        print("")
+
+
+        print("HTTP Client info     ")
+        print("-" * 10)
         for client in http_clients:
             self.process_http_client(client)
 
