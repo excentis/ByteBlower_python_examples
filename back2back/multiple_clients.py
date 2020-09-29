@@ -220,7 +220,9 @@ class Example:
             print("Status                : {}".format(byteblower.ConvertHTTPRequestStatusToString(request_status_value)))
             print("")
 
+        # The HTTPSession has all the OSI Layer 5 info.
         http_client_session_info = http_client.HttpSessionInfoGet()
+        # Retrive the latest info from the Server.
         http_client_session_info.Refresh()
 
         http_session_info = http_client.HttpSessionInfoGet()
@@ -231,6 +233,8 @@ class Example:
         rx_bytes = http_result.RxByteCountTotalGet()
         avg_throughput = http_result.AverageDataSpeedGet()
 
+
+        # The TCP Session has all the OSI Layer 4 information. 
         tcp_result = http_session_info.TcpSessionInfoGet().ResultGet()
         tcp_result.Refresh()
 
