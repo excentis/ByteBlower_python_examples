@@ -107,8 +107,11 @@ class Example:
         # We will create multiple clients onto the same the ByteBlowerPort.
         http_clients = []
 
-        # We'll use the maximum duration later on.
+        # We'll use the max_duration for the stopcondtion furhter in the script. 
         max_duration = 0
+
+        # Configure each client one-by-one.
+        # This part is the same as the basic TCP example.
         for client_config in self.http_client_configs:
             # create a new HTTP Client and configure it.
             # This part is the same for 1 or multiple ones.
@@ -174,7 +177,6 @@ class Example:
                                                    HTTPRequestStatus.Error == status))
             if not any_client_still_running:
                 break
-
 
         # Stop the HTTP Server. 
         # This step is optional but has the advantage of 
