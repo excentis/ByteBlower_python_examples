@@ -139,26 +139,47 @@ class Example:
         # For this example this means all configured HTTPClients.
         client_bb_port.Start()
 
-        start_moment = time.time()
+        # Unlike before we now have several HTTPClients running together.
+        # This makes determining when the scenario is finished more 
+        # complex.
+        # Below we show two different stop conditions:
+        #    1. a timebased one. (required)
+        #    2. a client based one. (optional)
+        #
+        # Always use the time stop-condition. This provides a guaranteed
+        # end in case when the flows can't connect. 
+        #
+        # A little bit of extra_time gives the HTTPClients some time extra
+        # to make the actual connection.
         extra_time = 2
-        clients_still_running = True
-        still_has_time = True
-        while clients_still_running and still_has_time:
+        start_moment = time.time()
+        while (time.time() - start_moment) > (extra_time + duration):
             time.sleep(1)
+
             duration = (time.time() - start_moment) 
             print('%.2fs :: Waiting for clients to finish.' % (duration))
 
-            still_has_time = duration < (max_duration + extra_time)
-            clients_still_running = False 
+            # Below is the second type of stopcondition, a client based
+            # one.
+            any_client_still_running = False 
             for http_client in http_clients:
+                # Uptdate the local API object with the 
+                # with the info on the ByteBlowerServer.
                 http_client.Refresh()
+
+                # Check the status.
                 status = http_client.RequestStatusGet()
-                if not (HTTPRequestStatus.Finished == status or HTTPRequestStatus.Error == status):
-                    clients_still_running = True
-                    break
+                any_client_still_running = (any_client_still_running or 
+                                              not (HTTPRequestStatus.Finished == status or 
+                                                   HTTPRequestStatus.Error == status))
+            if not any_client_still_running:
+                break
 
+
+        # Stop the HTTP Server. 
+        # This step is optional but has the advantage of 
+        #  stopping traffic to/from the HTTP Clients
         http_server.Stop()
-
 
         print("")
         print("HTTP Server info     ")
@@ -167,19 +188,25 @@ class Example:
         print("Connected clients     : {} ".format(len(http_server.ClientIdentifiersGet())))
         print("")
 
-
         print("HTTP Client info     ")
         print("-" * 10)
+
+        # Process each of the clients.
         for client in http_clients:
             self.process_http_client(client)
 
+        # Removing the server will also cleanup all of the 
+        # ByteBlower API objects.
         byteblower_instance.ServerRemove(self.server)            
 
 
     def process_http_client(self, http_client):        
+        """
+            This method processes all results from an HTTPClient.
+            The method is very similar to the one in the TCP example.
+        """
         named_http_methods = {byteblower.HTTPRequestMethod.Put: 'PUT',
                         byteblower.HTTPRequestMethod.Get: 'GET'}
-
 
         print("Local TCP Port        : {} ".format(http_client.LocalPortGet()))
         print("Direction             : {} ".format(named_http_methods[http_client.HttpMethodGet()]))
