@@ -158,6 +158,9 @@ class Example:
                     break
 
         http_server.Stop()
+
+        print("Connected clients     : {} ".format(len(http_client.ClientIdentifiersGet())))
+
         for client in http_clients:
             self.process_http_client(client)
 
