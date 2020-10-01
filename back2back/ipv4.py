@@ -173,14 +173,15 @@ class Example:
         # During the test itself we queried the interval counters, there are also cumulative counters.
         # The last cumulative counter available in the history is also available as the Result
         stream_result = stream.ResultGet()
-        oos_result = trigger.ResultGet()
         stream_result.Refresh()
         print("Stream result:", stream_result.DescriptionGet())
-        oos_result.Refresh()
-        print("Out of sequence result:", oos_result.DescriptionGet())
+		
+        trigger_result = trigger.ResultGet()
+        trigger_result.Refresh()
+        print("Trigger result:", trigger_result.DescriptionGet())
 
         tx_frames = stream_result.PacketCountGet()
-        rx_frames = oos_result.PacketCountGet()
+        rx_frames = trigger_result.PacketCountGet()
 
         print("Sent {TX} frames, received {RX} frames".format(TX=tx_frames, RX=rx_frames))
 

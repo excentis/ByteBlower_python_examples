@@ -2,7 +2,13 @@
 Basic IPv4 Example for the ByteBlower Python API.
 All examples are garanteed to work with Python 2.7 and above
 
-Copyright 2018, Excentis N.V.
+This example show how to use TCP with ByteBlower. This all happens
+in the run method of the Example class.
+
+The ByteBlower port configuration is very flexible, you can configure
+ * IPv4 (static or DHCP)
+ * IPv6 (static, SLAAC, or DHCP)
+ * Optionially add a VLAN.
 """
 # Needed for python2 / python3 print function compatibility
 from __future__ import print_function
@@ -17,7 +23,7 @@ configuration = {
 
     # Configuration for the first ByteBlower port.  Will be used as HTTP server.
     'port_1_config': {
-        'interface': 'trunk-1-13',
+        'interface': 'trunk-1-20',
         'mac': '00:bb:01:00:00:01',
         # IP configuration for the ByteBlower Port.
         # Options are 'DHCPv4', 'DHCPv6', 'SLAAC', 'static'
@@ -31,6 +37,9 @@ configuration = {
         # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
         # if staticv6, use ["ipaddress", prefixlength]
         # 'ip': ['3000:3128::24', '64'],
+
+        # Optionally you can define a VLAN.
+        'vlan': 2,
 
         # TCP port number to be used by the HTTP connection.  On the HTTP server,
         # this will be the port on which the server listens.
@@ -203,6 +212,11 @@ class Example:
         port = self.server.PortCreate(config['interface'])
         port_l2 = port.Layer2EthIISet()
         port_l2.MacSet(config['mac'])
+
+        if 'vlan' in config:
+            vlan_id = int(config['vlan'])
+            port_l25 = port.Layer25VlanAdd()
+            port_l25.IDSet(vlan_id)
 
         ip_config = config['ip']
         if not isinstance(ip_config, list):

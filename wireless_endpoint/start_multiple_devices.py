@@ -4,7 +4,7 @@ import datetime
 import sys
 import time
 
-from byteblowerll.byteblower import ByteBlower, DeviceStatus, WirelessEndpointList
+from byteblowerll.byteblower import ByteBlower, DeviceStatus, WirelessEndpointList, ConfigError
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -163,9 +163,17 @@ class Example:
         # Connect to the meetingpoint
         self.meetingpoint = instance.MeetingPointAdd(self.meetingpoint_address)
 
+        # Get the maximum of devices allowed by the license, so we can limit the number of devices we lock.
+        license = self.meetingpoint.ServiceInfoGet().LicenseGet()
+        max_devices_allowed = license.NumberOfWirelessEndpointsGet()
+
         # If no WirelessEndpoint UUID was given, search an available one.
         if not self.wireless_endpoint_uuid_list:
             self.wireless_endpoint_uuid_list = self.select_wireless_endpoint_uuids()
+
+        # Limit the number of wireless endpoints to the number we fetched earlier.
+        if len(self.wireless_endpoint_uuid_list) > max_devices_allowed:
+            self.wireless_endpoint_uuid_list = self.wireless_endpoint_uuid_list[:max_devices_allowed]
 
         # Get the WirelessEndpoint devices
 
@@ -178,8 +186,14 @@ class Example:
         for wireless_endpoint in self.wireless_endpoints:
             # Claim the wireless endpoint for ourselves.  This means that
             #  nobody but us can use this device.
-            wireless_endpoint.Lock(True)
+            print("Locking device", wireless_endpoint.DeviceIdentifierGet())
+            try:
+                wireless_endpoint.Lock(True)
+            except ConfigError as e:
+                print("Could not lock!", e.getMessage(), file=sys.stderr)
+                raise
 
+        for wireless_endpoint in self.wireless_endpoints:
             self.__setup_http_client(wireless_endpoint, http_server)
 
         # now the flows are configured and the HTTP server is listening,
@@ -262,6 +276,7 @@ class Example:
 
         if self.meetingpoint is not None:
             instance.MeetingPointRemove(self.meetingpoint)
+
         if self.server is not None:
             instance.ServerRemove(self.server)
 
