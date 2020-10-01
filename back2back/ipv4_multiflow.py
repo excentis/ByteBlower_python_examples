@@ -1,6 +1,8 @@
 """
-Basic IPv4 frameblasting example for the ByteBlower Python API.
-All examples are garanteed to work with Python 2.7 and above
+Basic IPv4 frame blasting example with multiple flows for the ByteBlower
+Python API.  This example demonstrates the use of PortsStart and ResultsRefresh
+to multiple ByteBlower ports at once and fetch multiple results at once.
+All examples are guaranteed to work with Python 2.7 and above
 
 Copyright 2020, Excentis N.V.
 """
