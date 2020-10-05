@@ -4,6 +4,10 @@ These examples show how to configure traffic between two ByteBlower ports.
 - ipv4.py
 
   Straightforward IPv4 frameblasting test.
+  
+  The speed can be configured using the frame interval (interframegap) or using
+  a given throughput in Megabits per second.  In the latter case, the frame 
+  interval will be calculated.
  
 - ipv4_multiflow.py
 

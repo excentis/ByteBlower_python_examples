@@ -6,10 +6,11 @@ Copyright 2018, Excentis N.V.
 """
 
 from __future__ import print_function
-from byteblowerll.byteblower import ByteBlower
 
+import math
 from time import sleep
 
+from byteblowerll.byteblower import ByteBlower
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -23,9 +24,9 @@ configuration = {
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
-        'ip': 'dhcpv4',
+        # 'ip': 'dhcpv4',
         # if staticv4, use ["ipaddress", netmask, gateway]
-        # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
+        'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
     },
 
     # Configuration for the second ByteBlower port.
@@ -36,17 +37,32 @@ configuration = {
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
-        'ip': 'dhcpv4',
+        # 'ip': 'dhcpv4',
         # if staticv4, use ["ipaddress", netmask, gateway]
-        # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
+        'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
     },
 
     # number of frames to send.
     'number_of_frames': 10000,
 
+    # Size of the frames to be sent (without CRC).
+    # Unit: Bytes
+    'frame_size': 512,
+
     # Inter frame gap to use in nanoseconds.
+    # Using the throughput configuration variable above, a throughput value can
+    # be passed to the example script.  The inter frame gap will then be
+    # calculated using that value.
     # example: 1000000ns is 1ms, which is 1000pps
-    'interframegap_nanoseconds': 1000000
+    'interframegap_nanoseconds': 1000000,
+
+    # Instead of configuring the inter-frame gap above, one can specify a
+    # desired throughput too.  This conversion will be done in the __init__
+    # function of the example.
+    # When set, the throughput is used, otherwise interframegap above will
+    # be used.
+    # Units: Mbit/s
+    # 'throughput': 400
 }
 
 
@@ -57,7 +73,15 @@ class Example:
         self.port_2_config = kwargs['port_2_config']
 
         self.number_of_frames = kwargs['number_of_frames']
+        self.frame_size = kwargs['frame_size']
+
         self.interframegap_ns = kwargs['interframegap_nanoseconds']
+
+        throughput = kwargs.pop('throughput', None)
+        if throughput is not None:
+            self.interframegap_ns = self.calculate_interframegap(throughput)
+            print("%d Mbit/s translates to an inter-frame-gap of %d ns" %
+                  (throughput, self.interframegap_ns))
 
         self.server = None
         self.port_1 = None
@@ -78,7 +102,57 @@ class Example:
             byteblower_instance.ServerRemove(self.server)
             self.server = None
 
+    def calculate_interframegap(self, throughput):
+        """Calculate the frame interval for a specific throughput
+
+        The frame interval (called interframegap in the API) is the time
+        between the start of 2 subsequent frames.   For any given throughput
+        and frame size this can be calculated as following:
+
+          frame interval = total frame size / throughput
+
+        where the throughput is in bits per second and the frame size in bits.
+
+        Since the given frame size is Layer2 without CRC, the conversion to
+        Layer1 size needs to be done:
+            l1 = pause + preamble + start of frame delimiter + l2
+
+        The pause is 12 bytes, the preamble and sfd are 8 bytes.  The
+        configured frame size is l2 without CRC, so 4 bytes CRC need to
+        be added.
+
+        :param throughput: The throughput in Mbits/s
+        :type throughput: float
+
+        :return: The ifg rounded up for use in the API in nanoseconds
+        :rtype: int
+        """
+        crc_len = 4
+        pause = 12
+        preamble_sfd = 8
+
+        # An ethernet frame consists of a pause, a preamble, the frame itself
+        # since the frame size is configured without CRC, it needs to be added
+        total_frame_size = pause + preamble_sfd + self.frame_size + crc_len
+
+        frame_size_bits = total_frame_size * 8
+
+        # Throughput is in Mbits/s, so we need to get the value in bits/s
+        frames_per_second = throughput * 1e6 / frame_size_bits
+
+        # The inter-frame-gap is the interval between the beginning of 2 frames
+        # in nanoseconds, so we have to divide one second worth of nanoseconds
+        # through the number of frames per second to get it.
+        frame_interval = 1e9 / frames_per_second
+
+        # return the closest integer, since the API only allows integers to be
+        # passed
+        return math.ceil(frame_interval)
+
     def run(self):
+        udp_src = 4096
+        udp_dest = 4096
+
         byteblower_instance = ByteBlower.InstanceGet()
 
         print("Connecting to ByteBlower server %s..." % self.server_address)
@@ -120,10 +194,7 @@ class Example:
         # the Layer3 configuration object
         dst_mac = self.port_1.Layer3IPv4Get().Resolve(dst_ip)
 
-        frame_size = 512
-        udp_src = 4096
-        udp_dest = 4096
-        payload = 'a' * (frame_size - 42)
+        payload = 'a' * (self.frame_size - 42)
 
         from scapy.layers.inet import UDP, IP, Ether
         from scapy.all import Raw
