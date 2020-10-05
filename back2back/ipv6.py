@@ -65,10 +65,25 @@ class Example:
         self.port_1 = None
         self.port_2 = None
 
+    def cleanup(self):
+        """Clean up the created objects"""
+        byteblower_instance = ByteBlower.InstanceGet()
+        if self.port_1:
+            self.server.PortDestroy(self.port_1)
+            self.port_1 = None
+
+        if self.port_2:
+            self.server.PortDestroy(self.port_2)
+            self.port_2 = None
+
+        if self.server is not None:
+            byteblower_instance.ServerRemove(self.server)
+            self.server = None
+
     def run(self):
         byteblower_instance = ByteBlower.InstanceGet()
 
-        print("Connecting to ByteBlower server {}...".format(self.server_address))
+        print("Connecting to ByteBlower server %s..." % self.server_address)
         self.server = byteblower_instance.ServerAdd(self.server_address)
 
         # Create the port which will be the HTTP server (port_1)
@@ -79,7 +94,8 @@ class Example:
         # Create the port which will be the HTTP client (port_2)
         self.port_2 = self.provision_port(self.port_2_config)
 
-        # now create the stream.  A stream transmits frames on the port on which it is created.
+        # now create the stream.
+        # A stream transmits frames on the port on which it is created.
         stream = self.port_1.TxStreamAdd()
 
         # set the number of frames to transmit
@@ -88,18 +104,22 @@ class Example:
         # set the speed of the transmission
         stream.InterFrameGapSet(self.interframegap_ns)
 
-        # a stream transmits frames, so we need to tell the stream which frames we want to transmit
+        # Since a stream transmits frames, we need to tell the stream which
+        # frames we want to transmit
         frame = stream.FrameAdd()
 
-        # collect the frame header info.  We need to provide the Layer2 (ethernet) and Layer3 (IPv4) addresses.
+        # collect the frame header info.  We need to provide the
+        # Layer2 (ethernet) and Layer3 (IPv4) addresses.
         src_ip = self.port_1_config['ip_address']
         src_mac = self.port_1.Layer2EthIIGet().MacGet()
 
         dst_ip = self.port_2_config['ip_address']
 
-        # the destination MAC is the MAC address of the destination port if the destination port is in the same
-        # subnet as the source port, otherwise it will be the MAC address of the gateway.
-        # ByteBlower has a function to resolve the correct MAC address in the Layer3 configuration object
+        # the destination MAC is the MAC address of the destination port if
+        # the destination port is in the same subnet as the source port,
+        # otherwise it will be the MAC address of the gateway.
+        # ByteBlower has a function to resolve the correct MAC address in
+        # the Layer3 configuration object
         dst_mac = self.port_1.Layer3IPv6Get().Resolve(dst_ip)
 
         frame_size = 512
@@ -109,35 +129,39 @@ class Example:
 
         from scapy.layers.inet6 import UDP, IPv6, Ether
         from scapy.all import Raw
-        scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
-        scapy_udp_header = UDP(dport=udp_dest, sport=udp_src)
-        scapy_ip_header = IPv6(src=src_ip, dst=dst_ip)
-        scapy_frame = Ether(src=src_mac, dst=dst_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+        udp_payload = Raw(payload.encode('ascii', 'strict'))
+        udp_header = UDP(dport=udp_dest, sport=udp_src)
+        ip_header = IPv6(src=src_ip, dst=dst_ip)
+        eth_header = Ether(src=src_mac, dst=dst_mac)
+        scapy_frame = eth_header / ip_header / udp_header / udp_payload
 
         frame_content = bytearray(bytes(scapy_frame))
 
-        # The ByteBlower API expects an 'str' as input for the Frame::BytesSet(), we need to convert the bytearray
-        hexbytes = ''.join((format(b, "02x") for b in frame_content))
+        # The ByteBlower API expects an 'str' as input for the
+        # frame.BytesSet() method, we need to convert the bytearray
+        hex_bytes = ''.join((format(b, "02x") for b in frame_content))
+        frame.BytesSet(hex_bytes)
 
-        frame.BytesSet(hexbytes)
-
-        # create a trigger.  A trigger is an object which receives data.
+        # Create a trigger.  A trigger is an object which receives data.
         # The Basic trigger just count packets
         trigger = self.port_2.RxTriggerBasicAdd()
 
-        # every trigger needs to know on which frames it will work.  The default filter is no filter, so it will
-        # analyze every frame, which is not what we want here.
+        # Every trigger needs to know on which frames it will work.
+        # The default filter is no filter, so it will analyze every frame,
+        # which is not what we want here.
         # We will filter on the destination IP and the destination UDP port
         bpf_filter = "ip6 dst {} and udp port {}".format(dst_ip, udp_dest)
         trigger.FilterSet(bpf_filter)
 
-        # print the configuration, this makes it easy to review what we have done until now
+        # print the configuration, this makes it easy to review what we have
+        # done until now
         print("Current ByteBlower configuration:")
         print("port1:", self.port_1.DescriptionGet())
         print("port2:", self.port_2.DescriptionGet())
 
-        # start the traffic, clear the latency trigger.  Triggers are active as soon they are created, so
-        # we may want to clear the data it already has collected.
+        # Start the traffic and clear the trigger.
+        # Triggers are active as soon they are created, so we may want to clear
+        # the data it already has collected.
         print("Starting traffic")
         trigger.ResultClear()
         stream_history = stream.ResultHistoryGet()
@@ -153,8 +177,10 @@ class Example:
             # sleep one second
             sleep(1)
 
-            # Refresh the history, the ByteBlower server will create interval and cumulative results every
-            # second (by default).  The Refresh method will synchronize the server data with the client.
+            # Refresh the history, the ByteBlower server will create interval
+            # and cumulative results every second (by default).
+            # The Refresh method will synchronize the server data with
+            # the client.
             stream_history.Refresh()
             trigger_history.Refresh()
 
@@ -169,32 +195,26 @@ class Example:
         print("Done sending traffic (time elapsed)")
 
         # Waiting for a second after the stream is finished.
-        # This has the advantage that frames that were transmitted but not received yet,
-        # can be processed by the server
+        # This has the advantage that frames that were transmitted but not
+        # received yet, can be processed by the server
         print("Waiting for a second")
         sleep(1)
 
-        # During the test itself we queried the interval counters, there are also cumulative counters.
-        # The last cumulative counter available in the history is also available as the Result
+        # During the test itself we queried the interval counters, there are
+        # also cumulative counters.  The last cumulative counter available in
+        # the history is also available as the Result
         stream_result = stream.ResultGet()
-        oos_result = trigger.ResultGet()
+        trigger_result = trigger.ResultGet()
         stream_result.Refresh()
         print("Stream result:", stream_result.DescriptionGet())
-        oos_result.Refresh()
-        print("Out of sequence result:", oos_result.DescriptionGet())
+        trigger_result.Refresh()
+        print("Trigger result:", trigger_result.DescriptionGet())
 
         tx_frames = stream_result.PacketCountGet()
-        rx_frames = oos_result.PacketCountGet()
+        rx_frames = trigger_result.PacketCountGet()
 
-        print("Sent {TX} frames, received {RX} frames".format(TX=tx_frames, RX=rx_frames))
-
-        # It is considered good practice to clean up your objects.  This tells the ByteBlower server it can
-        # clean up its resources.
-        self.server.PortDestroy(self.port_1)
-        self.server.PortDestroy(self.port_2)
-
-        # Disconnect from the ByteBlower server
-        byteblower_instance.ServerRemove(self.server)
+        print("Sent {TX} frames, received {RX} frames".format(TX=tx_frames,
+                                                              RX=rx_frames))
 
         return [tx_frames, rx_frames]
 
@@ -249,4 +269,8 @@ class Example:
 # called.  This approach makes it possible to include it in a series of
 # examples.
 if __name__ == "__main__":
-    Example(**configuration).run()
+    example = Example(**configuration)
+    try:
+        example.run()
+    finally:
+        example.cleanup()

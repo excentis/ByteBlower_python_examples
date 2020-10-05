@@ -1,6 +1,7 @@
 #!/usr/bin/python
-""""
-This example allows the user to configure a frameblasting flow which transmits data to the wireless endpoint.
+"""
+This example allows the user to configure a frame blasting flow which transmits
+data from the wireless endpoint to the ByteBlower Port.
 
 WirelessEndpoint --> ByteBlowerPort
 """
@@ -8,6 +9,7 @@ WirelessEndpoint --> ByteBlowerPort
 from __future__ import print_function
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower
+from byteblowerll.byteblower import DeviceStatus
 
 from scapy.packet import Raw
 
@@ -28,15 +30,18 @@ configuration = {
     # if static, use ["ipaddress", "netmask", "gateway"]
     # 'port_ip_address': ['172.16.0.4', '255.255.252.0', '172.16.0.1'],
 
-    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
-    # on this meetingpoint.
-    # Special value: None.  When the address is set to None, the server_address will be used.
+    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.
+    # The wireless endpoint *must* be registered on this meetingpoint.
+    # Special value: None.  When the address is set to None,
+    #   the server_address will be used.
     'meetingpoint_address': None,
 
-    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
+    # UUID of the ByteBlower WirelessEndpoint to use.
+    # This wireless endpoint *must* be registered to the meetingpoint
     # configured by meetingpoint_address.
-    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
-    # wireless endpoint.
+    # Special value: None.
+    # When the UUID is set to None, the example will automatically select
+    # the first available wireless endpoint.
     'wireless_endpoint_uuid': None,
     # 'wireless_endpoint_uuid': '6d9c2347-e6c1-4eea-932e-053801de32eb',
 
@@ -46,7 +51,8 @@ configuration = {
     # Number of frames to send.
     'number_of_frames': 1000,
 
-    # How fast must the frames be sent.  e.g. every 10 milliseconds (=10000000 nanoseconds)
+    # How fast must the frames be sent.
+    # e.g. every 10 milliseconds (=10000000 nanoseconds)
     'interframe_gap_nanoseconds': 10000000,
 
     'udp_srcport': 4096,
@@ -94,7 +100,8 @@ class Example:
 
         # configure the IP addressing on the port
         port_layer3_config = self.port.Layer3IPv4Set()
-        if type(self.port_ip_address) is str and self.port_ip_address == 'dhcp':
+        if (type(self.port_ip_address) is str
+                and self.port_ip_address == 'dhcp'):
             # DHCP is configured on the DHCP protocol
             dhcp_protocol = port_layer3_config.ProtocolDhcpGet()
             dhcp_protocol.Perform()
@@ -120,7 +127,8 @@ class Example:
         # Now we have the correct information to start configuring the flow.
 
         # The ByteBlower port will transmit frames to the wireless endpoint,
-        # This means we need to create a 'stream' on the ByteBlower port and a Trigger on the WirelessEndpoint
+        # This means we need to create a 'stream' on the ByteBlower port and
+        # a Trigger on the WirelessEndpoint
 
         stream = self.wireless_endpoint.TxStreamAdd()
         stream.InterFrameGapSet(self.interframe_gap_nanoseconds)
@@ -129,7 +137,8 @@ class Example:
         # a stream needs to send some data, so lets create a frame
         # For the frame, we need:
         # - The destination IP address (The IP address of the ByteBlower port)
-        # - The source and destination UDP ports (we configured this on top of this script)
+        # - The source and destination UDP ports (we configured this on top
+        #   of this script)
         # - a payload to transmit.
 
         port_layer3_config = self.port.Layer3IPv4Get()
@@ -141,7 +150,8 @@ class Example:
 
         payload_array = bytearray(bytes(scapy_udp_payload))
 
-        # The ByteBlower API expects an 'str' as input for the Frame::BytesSet(), we need to convert the bytearray
+        # The ByteBlower API expects an 'str' as input for
+        # the frame.BytesSet() method, we need to convert the bytearray
         hexbytes = ''.join((format(b, "02x") for b in payload_array))
 
         frame = stream.FrameAdd()
@@ -159,9 +169,11 @@ class Example:
         trigger = self.port.RxTriggerBasicAdd()
 
         # Trigger on a ByteBlower port uses BPF
-        # Note: We could generate a more effective filter which will only trigger the traffic,
-        #       but for demo purposes and taking NAT into account, we just keep it simple.
-        trigger.FilterSet("ip host " + port_ipv4 + " and udp port " + str(self.udp_dstport))
+        # Note: We could generate a more effective filter which will only
+        #       trigger the traffic, but for demo purposes and taking NAT into
+        #       account, we just keep it simple.
+        bpf = "ip host " + port_ipv4 + " and udp port " + str(self.udp_dstport)
+        trigger.FilterSet(bpf)
 
         # Now all configuration is made
         print(stream.DescriptionGet())
@@ -184,10 +196,12 @@ class Example:
         # Wait 200 ms longer, to make sure the wireless endpoint has started.
         time_to_wait_ns += 200000000
 
-        print("Waiting for", time_to_wait_ns / 1000000000.0, "to start the port")
+        print("Waiting for", time_to_wait_ns / 1000000000.0,
+              "to start the port")
         sleep(time_to_wait_ns / 1000000000.0)
 
-        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames + 1000000000
+        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames
+        duration_ns += 1000000000
         print("Port will transmit for", duration_ns / 1000000000.0, "seconds")
         self.port.Start()
 
@@ -230,14 +244,13 @@ class Example:
     def select_wireless_endpoint_uuid(self):
         """
         Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        If the device has the status 'Available', return its UUID,
+        otherwise return None
         :return: a string representing the UUID or None
         """
-        from byteblowerll.byteblower import DeviceStatus_Available
-
         for device in self.meetingpoint.DeviceListGet():
             # is the status Available?
-            if device.StatusGet() == DeviceStatus_Available:
+            if device.StatusGet() == DeviceStatus.Available:
                 # yes, return the UUID
                 print("Selecting device", device.DeviceIdentifierGet())
                 return device.DeviceIdentifierGet()

@@ -7,13 +7,14 @@ WirelessEndpoint --> ByteBlowerPort
 
 from __future__ import print_function
 
-from time import mktime
-from highcharts import Highchart
 import csv
 import datetime
+from time import mktime
+
+from highcharts import Highchart
+
 
 def create_highcharts(device_name, results):
-
     categories = []
     ssid_categories = results[3]
     for pair in ssid_categories:
@@ -57,10 +58,12 @@ def create_highcharts(device_name, results):
 
     return chart
 
+
 def write_highcharts_html(chart):
     with open('highcharts_rssi.html', 'w') as f:
         # Write the headers
         f.write(chart.htmlcontent)
+
 
 def plot_data(device_name, results_filename):
     print("Reading CSV results from file ", results_filename)
@@ -81,7 +84,9 @@ def get_millis(timestring):
     millis = sec_since_epoch * 1000
     return millis
 
+
 no_signal = 'No Signal'
+
 
 # return the index of the ssid_bssid:
 def append_ssid_bssid(categories, ssid_bssid):
@@ -92,15 +97,16 @@ def append_ssid_bssid(categories, ssid_bssid):
         pair = categories[i]
         if pair[1] == ssid_bssid:
             return i
-        i+=1
-    categories.append([i,ssid_bssid])
+        i += 1
+    categories.append([i, ssid_bssid])
     return i
+
 
 def read_from_csv(results_file):
     throughput_series = []
     rssi_series = []
     ssid_bssid_series = []
-    ssid_bssid_categories = [[0,no_signal]]
+    ssid_bssid_categories = [[0, no_signal]]
 
     skip_header = True
     with open(results_file) as csvfile:
@@ -110,13 +116,14 @@ def read_from_csv(results_file):
                 skip_header = False
             else:
                 millis = get_millis(row[0])
-                throughput_series.append([millis,float(row[4])])
-                rssi_series.append([millis,float(row[5])])
+                throughput_series.append([millis, float(row[4])])
+                rssi_series.append([millis, float(row[5])])
                 ssid_bssid = row[6] + ' <br> ' + row[7]
                 index = append_ssid_bssid(ssid_bssid_categories, ssid_bssid)
                 ssid_bssid_series.append([millis, index])
 
     return [throughput_series, rssi_series, ssid_bssid_series, ssid_bssid_categories]
+
 
 if __name__ == '__main__':
     plot_data('Samsung S10', 'rssi_vs_udp_loss.py.csv')

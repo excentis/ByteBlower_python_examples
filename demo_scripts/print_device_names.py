@@ -1,14 +1,11 @@
 #!/usr/bin/python
 """
-    This script lists all Wireless Endpoints registered to
-    a MeetingPoint. 
+    This script lists all Wireless Endpoints registered to a MeetingPoint.
 
-    We print out the name of the device together with its
-    UUID.
+    We print out the name of the device together with its UUID.
 
-    You can run this script immediately in Python. It has
-    a sole argument, the address of the meeingpoint to 
-    scan.
+    You can run this script immediately in Python. It has a sole argument,
+    the address of the meetingpoint to scan.
 
     Example:
     =======

@@ -14,14 +14,15 @@ from byteblowerll.byteblower import ByteBlower
 
 
 configuration = {
-    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
-    # on this meetingpoint.
+    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless
+    # endpoint *must* be registered on this meetingpoint.
     'meetingpoint_address': 'byteblower-tutorial-1300.lab.byteblower.excentis.com',
 
-    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
-    # configured by meetingpoint_address.
-    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
-    # wireless endpoint.
+    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint
+    # *must* be registered to the meetingpoint configured by
+    # meetingpoint_address.
+    # Special value: None.  When the UUID is set to None, the example will
+    # automatically select the first available wireless endpoint.
     # 'wireless_endpoint_uuid': None,
     'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
 }
@@ -49,7 +50,8 @@ class Example:
 
         # Get the WirelessEndpoint device
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
-        print("Using wireless endpoint", self.wireless_endpoint.DeviceInfoGet().GivenNameGet())
+        device_info = self.wireless_endpoint.DeviceInfoGet()
+        print("Using wireless endpoint", device_info.GivenNameGet())
 
         duration_scenario = 5000000000
         self.wireless_endpoint.ScenarioDurationSet(duration_scenario)
@@ -71,10 +73,12 @@ class Example:
         # Wait 200 ms longer, to make sure the wireless endpoint has started.
         time_to_wait_ns += 200000000
 
-        print("Waiting for", time_to_wait_ns / 1000000000.0, "to start the wireless endpoint")
+        print("Waiting for", time_to_wait_ns / 1000000000.0,
+              "to start the wireless endpoint")
         sleep(time_to_wait_ns / 1000000000.0)
 
-        print("wireless endpoint will be running for", duration_scenario / 1000000000.0, "seconds")
+        print("wireless endpoint will be running for",
+              duration_scenario / 1000000000.0, "seconds")
 
         print("Waiting for the test to finish")
         sleep(duration_scenario / 1000000000.0)
@@ -89,7 +93,8 @@ class Example:
     def select_wireless_endpoint_uuid(self):
         """
         Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        If the device has the status 'Available', return its UUID,
+        otherwise return None
         :return: a string representing the UUID or None
         """
         from byteblowerll.byteblower import DeviceStatus_Available

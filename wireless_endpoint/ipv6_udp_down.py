@@ -1,11 +1,13 @@
 #!/usr/bin/python
 """"
-This example allows the user to configure a frameblasting flow which transmits data to the wireless endpoint.
+This example allows the user to configure an IPv6 frame blasting flow which
+transmits data to the wireless endpoint.
 
 ByteBlowerPort --> WirelessEndpoint
 """
 
 from __future__ import print_function
+
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower
 
@@ -34,21 +36,25 @@ configuration = {
     # if static, use ["ipaddress", prefixlength]
     # 'port_ip_address': ['3000:3128::24', '64'],
 
-    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
-    # on this meetingpoint.
-    # Special value: None.  When the address is set to None, the server_address will be used.
+    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.
+    # The wireless endpoint *must* be registered on this meetingpoint.
+    # Special value: None.  When the address is set to None,
+    #                       the server_address will be used.
     'meetingpoint_address': None,
 
-    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
+    # UUID of the ByteBlower WirelessEndpoint to use.
+    # This wireless endpoint *must* be registered to the meetingpoint
     # configured by meetingpoint_address.
-    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
-    # wireless endpoint.
+    # Special value: None.  When the UUID is set to None, the example will
+    #                       automatically select the first available
+    #                       wireless endpoint.
     'wireless_endpoint_uuid': None,
     # 'wireless_endpoint_uuid': 'fd9d9566-8aa3-47c3-9d4b-e597362728d1',
 
     # Name of the traffic interface of the ByteBlower wireless endpoint.
-    # only needed when the Wireless endpoint has multiple interfaces with IPv6 addresses. (e.g. The wireless endpoint
-    # has an management and traffic interface.
+    # only needed when the Wireless endpoint has multiple interfaces with
+    # IPv6 addresses. (e.g. The wireless endpoint has an management and traffic
+    # interface.
     # 'wireless_endpoint_traffic_interface': None,
     'wireless_endpoint_traffic_interface': "eth1",
 
@@ -58,7 +64,8 @@ configuration = {
     # Number of frames to send.
     'number_of_frames': 1000,
 
-    # How fast must the frames be sent.  e.g. every 10 milliseconds (=10000000 nanoseconds)
+    # How fast must the frames be sent.
+    # e.g. every 10 milliseconds (=10000000 nanoseconds)
     'interframe_gap_nanoseconds': 10000000,
 
     'udp_srcport': 4096,
@@ -107,11 +114,13 @@ class Example:
 
         # configure the IP addressing on the port
         port_layer3_config = self.port.Layer3IPv6Set()
-        if type(self.port_ip_address) is str and self.port_ip_address.lower() == 'dhcp':
+        if (type(self.port_ip_address) is str
+                and self.port_ip_address.lower() == 'dhcp'):
             # DHCP is configured on the DHCP protocol
             dhcp_protocol = port_layer3_config.ProtocolDhcpGet()
             dhcp_protocol.Perform()
-        elif type(self.port_ip_address) is str and self.port_ip_address.lower() == 'slaac':
+        elif (type(self.port_ip_address) is str
+              and self.port_ip_address.lower() == 'slaac'):
             # wait for stateless autoconfiguration to complete
             port_layer3_config.StatelessAutoconfiguration()
         else:
@@ -137,7 +146,8 @@ class Example:
         # Now we have the correct information to start configuring the flow.
 
         # The ByteBlower port will transmit frames to the wireless endpoint,
-        # This means we need to create a 'stream' on the ByteBlower port and a Trigger on the WirelessEndpoint
+        # This means we need to create a 'stream' on the ByteBlower port
+        #  and a Trigger on the WirelessEndpoint
 
         stream = self.port.TxStreamAdd()
         stream.InterFrameGapSet(self.interframe_gap_nanoseconds)
@@ -145,12 +155,14 @@ class Example:
 
         # a stream needs to send some data, so lets create a frame
         # For the frame, we need:
-        # - The source MAC address (MAC address of the ByteBlower port in our case)
-        # - The destination MAC address.  This can be the MAC address of the WirelessEndpoint, a router, ...
-        #   We need to resolve this
+        # - The source MAC address (MAC address of the ByteBlower port
+        #   in our case)
+        # - The destination MAC address.  This can be the MAC address of the
+        #   WirelessEndpoint, a router, ... This will resolved later on.
         # - The source IP address (The IP address of the ByteBlower port)
         # - The destination IP address (The IP address of the WirelessEndpoint)
-        # - The source and destination UDP ports (we configured this on top of this script)
+        # - The source and destination UDP ports (we configured this on top of
+        #   this script)
         # - a payload to transmit.
 
         port_mac = self.port.Layer2EthIIGet().MacGet()
@@ -168,11 +180,13 @@ class Example:
         for ipv6_address in ipv6_addresses:
             port_ipv6 = ipv6_address.split("/")[0]
 
-        # destination MAC must be resolved, since we do not know whether the WE is available on the local LAN
+        # destination MAC must be resolved, since we do not know whether the WE
+        # is available on the local LAN
         destination_mac = None
         wireless_endpoint_ipv6 = None
-        for wireless_endpoint_ipv6_address in self.select_wireless_endpoint_addresses():
-            wireless_endpoint_ipv6 = wireless_endpoint_ipv6_address.split('/')[0]
+        all_we_addresses = self.select_wireless_endpoint_addresses()
+        for address in all_we_addresses:
+            wireless_endpoint_ipv6 = address.split('/')[0]
             try:
                 destination_mac = port_layer3_config.Resolve(wireless_endpoint_ipv6)
                 break
@@ -183,14 +197,16 @@ class Example:
 
         from scapy.layers.inet6 import UDP, IPv6, Ether
         from scapy.all import Raw
-        scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
-        scapy_udp_header = UDP(dport=self.udp_dstport, sport=self.udp_srcport)
-        scapy_ip_header = IPv6(src=port_ipv6, dst=wireless_endpoint_ipv6)
-        scapy_frame = Ether(src=port_mac, dst=destination_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+        udp_payload = Raw(payload.encode('ascii', 'strict'))
+        udp_header = UDP(dport=self.udp_dstport, sport=self.udp_srcport)
+        ip_header = IPv6(src=port_ipv6, dst=wireless_endpoint_ipv6)
+        eth_header = Ether(src=port_mac, dst=destination_mac)
+        scapy_frame = eth_header / ip_header / udp_header / udp_payload
 
         frame_content = bytearray(bytes(scapy_frame))
 
-        # The ByteBlower API expects an 'str' as input for the Frame::BytesSet(), we need to convert the bytearray
+        # The ByteBlower API expects an 'str' as input for the
+        # frame.BytesSet() method, we need to convert the bytearray
         hexbytes = ''.join((format(b, "02x") for b in frame_content))
 
         frame = stream.FrameAdd()
@@ -201,12 +217,15 @@ class Example:
         # - the source UDP port
         # - the destination UDP port
         # - the originating IP address
-        # - the duration of the session.  This can be calculated from the stream settings
-        #   interframegap (nanoseconds/frame) * number of frames (frames) + some fixed rollout
+        # - the duration of the session.  This can be calculated from the
+        #   stream settings as
+        #   interframegap (nanoseconds/frame) * number of frames (frames)
+        #   some fixed rollout can be added too
         trigger = self.wireless_endpoint.RxTriggerBasicAdd()
 
         # Add 2 seconds of rollout, so frames in transit can be counted too
-        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames + 2000000000
+        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames
+        duration_ns += 2000000000
 
         trigger.DurationSet(duration_ns)
         trigger.FilterUdpSourcePortSet(self.udp_srcport)
@@ -234,7 +253,8 @@ class Example:
         # Wait 200 ms longer, to make sure the wireless endpoint has started.
         time_to_wait_ns += 200000000
 
-        print("Waiting for", time_to_wait_ns / 1000000000.0, "to start the port")
+        print("Waiting for", time_to_wait_ns / 1000000000.0,
+              "to start the port")
         sleep(time_to_wait_ns / 1000000000.0)
 
         print("Port will transmit for", duration_ns / 1000000000.0, "seconds")
@@ -273,7 +293,8 @@ class Example:
     def select_wireless_endpoint_uuid(self):
         """
         Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        If the device has the status 'Available', return its UUID,
+         otherwise return None
         :return: a string representing the UUID or None
         """
         from byteblowerll.byteblower import DeviceStatus_Available
@@ -289,15 +310,19 @@ class Example:
 
     def select_wireless_endpoint_addresses(self):
         """
-        Search for the traffic interface on the wireless endpoint. Return all available Global IPv6 addresses
+        Search for the traffic interface on the wireless endpoint.
+        Return all available Global IPv6 addresses
+
         :return: list if IPv6 addresses
         """
         device_info = self.wireless_endpoint.DeviceInfoGet()
         network_info = device_info.NetworkInfoGet()
 
         for network_interface in network_info.InterfaceGet():
-            if network_interface.NameGet() == self.wireless_endpoint_traffic_interface:
-                return [address.split('/')[0] for address in network_interface.IPv6GlobalGet()]
+            interface_name = network_interface.NameGet()
+            if interface_name == self.wireless_endpoint_traffic_interface:
+                return [address.split('/')[0]
+                        for address in network_interface.IPv6GlobalGet()]
 
         return []
 

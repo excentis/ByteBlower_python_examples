@@ -14,15 +14,18 @@ important functional differrences between both:
 
     * The Network monitor is part of a scenario on a Wireless 
        Endpoint. This has a large impact:
-          - In the same scenario you can add other traffic (TCP or FrameBlasting).
-          - While the scenario is running, the Wireless Endpoint maintains
-             radio silence you can't communicate with it.
-          - A device running a scenario is always locked to a single API connection.
-          - It takes a couple Wireless Endpoint heartbeats to start/finish a scenario. 
-          - The collected results are only available after the testrun has finished.
+       - In the same scenario you can add other traffic (TCP or FrameBlasting).
+       - While the scenario is running, the Wireless Endpoint maintains radio
+         silence you can't communicate with it.
+       - A device running a scenario is always locked to a single API
+         connection.
+       - It takes a couple Wireless Endpoint heartbeats to start/finish a
+         scenario.
+       - The collected results are only available after the testrun has
+         finished.
     
-    * If your device has multiple Wi-Fi network adapters, the statistics are logged
-       simultaneously on all network interfaces. 
+    * If your device has multiple Wi-Fi network adapters, the statistics are
+      logged simultaneously on all network interfaces.
 
     * The NetworkMonitor is more complex to use compared to the polling method. 
   
@@ -34,8 +37,8 @@ We recommend using the NetworkInfoMonitor when you want to collect results:
 
 from __future__ import print_function
 
-import datetime
 import time
+from datetime import timedelta
 
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower
@@ -59,23 +62,23 @@ configuration = {
     'wireless_interface': 'en0',
 
     # duration in seconds to poll for information
-    'duration': datetime.timedelta(seconds=20),
+    'duration': timedelta(seconds=20),
 
     # resolution of the snapshots in the history.
-    # 'interval_duration': datetime.timedelta(seconds=1)
-    'interval_duration': datetime.timedelta(milliseconds=200)
+    # 'interval_duration': timedelta(seconds=1)
+    'interval_duration': timedelta(milliseconds=200)
 }
 
 
 class Example:
     def __init__(self, **kwargs):
-
+        ten_seconds = timedelta(seconds=10)
         self.meetingpoint_address = kwargs.pop('meetingpoint_address')
 
         self.wireless_endpoint_uuid = kwargs.pop('wireless_endpoint_uuid', None)
         self.wireless_interface = kwargs['wireless_interface']
-        self.duration = kwargs.pop('duration', datetime.timedelta(seconds=10))
-        self.interval_duration = kwargs.pop('interval_duration', datetime.timedelta(seconds=10))
+        self.duration = kwargs.pop('duration', ten_seconds)
+        self.interval_duration = kwargs.pop('interval_duration', ten_seconds)
 
         self.meetingpoint = None
         self.wireless_endpoint = None
@@ -93,23 +96,26 @@ class Example:
 
         # Get the WirelessEndpoint device
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
-        print("Using wireless endpoint", self.wireless_endpoint.DeviceInfoGet().GivenNameGet())
+        device_info = self.wireless_endpoint.DeviceInfoGet()
+        print("Using wireless endpoint", device_info.GivenNameGet())
 
         # The network monitor is part of scenario.
         self.wireless_endpoint.Lock(True)
-        self.wireless_endpoint.ScenarioDurationSet(int(self.duration.total_seconds() * 1000000000))  # ns
+        scenario_duration_ns = int(self.duration.total_seconds() * 1000000000)
+        self.wireless_endpoint.ScenarioDurationSet(scenario_duration_ns)
 
         # Add the monitor to the scenario.
         # The Wi-Fi statistics are captured as soon as the scenario starts.
-        device_info = self.wireless_endpoint.DeviceInfoGet()
-        network_info_monitor = device_info.NetworkInfoMonitorAdd()
+        monitor = device_info.NetworkInfoMonitorAdd()
 
         # We want to have history samples every interval_duration seconds.
         # The Wireless Endpoint will take new snapshot every
         # interval_duration_ns.
-        interval_duration_ns = int(self.interval_duration.total_seconds() * 1000000000)
-        network_info_monitor.ResultHistoryGet().SamplingIntervalDurationSet(interval_duration_ns)
-        
+        interval_duration_s = self.interval_duration.total_seconds()
+        interval_duration_ns = int(interval_duration_s * 1e9)
+        monitor_history = monitor.ResultHistoryGet()
+        monitor_history.SamplingIntervalDurationSet(interval_duration_ns)
+
         # Start the test-run.
         print("Starting the wireless endpoint")
         self.wireless_endpoint.Prepare()
@@ -127,7 +133,8 @@ class Example:
 
         # Wait for the device to start beating again.
         # Default heartbeat interval is 1 seconds, so lets wait for 2 beats
-        print('Waiting for the wireless endpoint to be communicating with the server')
+        print('Waiting for the wireless endpoint to be communicating '
+              'with the server')
         time.sleep(2)
 
         # Get the results on the wireless endpoint
@@ -135,8 +142,7 @@ class Example:
         self.wireless_endpoint.ResultGet()
 
         print('Parsing the results')
-        history = network_info_monitor.ResultHistoryGet()
-        history.Refresh()
+        monitor_history.Refresh()
 
         # Collect the results from the NetworkInfoMonitor
         headers = (
@@ -149,7 +155,7 @@ class Example:
         )
         print(" ".join(headers))
         # Looping over the collected results.
-        for sample in history.IntervalGet():
+        for sample in monitor_history.IntervalGet():
 
             # The moment when this sample was taken.
             timestamp = sample.TimestampGet()
@@ -163,16 +169,16 @@ class Example:
                 is_connected_to_wifi = network_interface.WiFiSsidGet() != ""
                 if is_connected_to_wifi:
                     print(
-                       timestamp, 
-                       network_interface.DisplayNameGet(),
-                       network_interface.WiFiSsidGet(),
-                       network_interface.WiFiBssidGet(),
-                       network_interface.WiFiChannelGet(),
-                       network_interface.WiFiRssiGet(),
-                       network_interface.WiFiTxRateGet()
+                        timestamp,
+                        network_interface.DisplayNameGet(),
+                        network_interface.WiFiSsidGet(),
+                        network_interface.WiFiBssidGet(),
+                        network_interface.WiFiChannelGet(),
+                        network_interface.WiFiRssiGet(),
+                        network_interface.WiFiTxRateGet()
                     )
 
-        return self.collect_results(history)
+        return self.collect_results(monitor_history)
 
     @staticmethod
     def collect_result_for_snapshot(snapshot):
@@ -181,9 +187,10 @@ class Example:
         }
 
     def collect_results(self, history):
-
+        snapshot_interval_ns = history.SamplingIntervalDurationGet()
+        snapshot_interval_us = snapshot_interval_ns / 1000
         result = {
-            'snapshot_interval': datetime.timedelta(microseconds=history.SamplingIntervalDurationGet()/1000),
+            'snapshot_interval': timedelta(microseconds=snapshot_interval_us),
             'snapshots': []
         }
 

@@ -3,7 +3,7 @@ import time
 import random
 import datetime
 
-from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved, ByteBlowerAPIException
+from byteblowerll.byteblower import ByteBlower, DeviceStatus
 import sys
 
 
@@ -23,8 +23,8 @@ configuration = {
     # if static, use ["ipaddress", "netmask", "gateway"]
     # 'port_ip_address': ['172.16.0.4', '255.255.252.0', '172.16.0.1'],
 
-    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless
-    # endpoint *must* be registered on this meetingpoint.
+    # Address (IP or FQDN) of the ByteBlower MeetingPoint to use.  The wireless
+    # endpoint *must* be registered on this meeting point.
     # Special value: None.  When the address is set to None, the server_address
     #                       will be used.
     'meetingpoint_address': None,
@@ -80,7 +80,8 @@ class Example:
         # enumeration used by the API
         from byteblowerll.byteblower import ParseHTTPRequestMethodFromString
 
-        self.http_method = ParseHTTPRequestMethodFromString(kwargs['http_method'])
+        method = kwargs['http_method']
+        self.http_method = ParseHTTPRequestMethodFromString(method)
         self.duration = kwargs['duration']
         self.tos = kwargs['tos']
 
@@ -197,12 +198,13 @@ class Example:
         # 'DeviceStatus_Reserved', since we have a Lock on the device.
         status = self.wireless_endpoint.StatusGet()
         start_moment = datetime.datetime.now()
-        while status != DeviceStatus_Reserved:
+        while status != DeviceStatus.Reserved:
             time.sleep(1)
             status = self.wireless_endpoint.StatusGet()
             now = datetime.datetime.now()
             print(str(now), ":: Running for", str(now - start_moment), "::",
-                  http_server.ClientIdentifiersGet().size(), "client(s) connected")
+                  http_server.ClientIdentifiersGet().size(),
+                  "client(s) connected")
 
         # Wireless Endpoint has returned. Collect and process the results.
 
@@ -249,14 +251,14 @@ class Example:
     def select_wireless_endpoint_uuid(self):
         """
         Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        If the device has the status 'Available', return its UUID,
+        otherwise return None
         :return: a string representing the UUID or None
         """
-        from byteblowerll.byteblower import DeviceStatus_Available
 
         for device in self.meetingpoint.DeviceListGet():
             # is the status Available?
-            if device.StatusGet() == DeviceStatus_Available:
+            if device.StatusGet() == DeviceStatus.Available:
                 # yes, return the UUID
                 return device.DeviceIdentifierGet()
 
@@ -271,13 +273,19 @@ class Example:
         for tt in http_hist.IntervalGet():
             tx_data = tt.TxByteCountTotalGet()
             timestamp = tt.TimestampGet()
-            tx_samples.append((timestamp, tx_data, self.bytes_per_sample_to_mbit_s(sample_duration, tx_data)))
+            speed = self.bytes_per_sample_to_mbit_s(sample_duration, tx_data)
+            tx_samples.append(
+                (timestamp, tx_data, speed)
+            )
 
         rx_samples = []
         for tt in http_hist.IntervalGet():
             rx_data = tt.RxByteCountTotalGet()
             timestamp = tt.TimestampGet()
-            rx_samples.append((timestamp, rx_data, self.bytes_per_sample_to_mbit_s(sample_duration, rx_data)))
+            speed = self.bytes_per_sample_to_mbit_s(sample_duration, rx_data)
+            rx_samples.append(
+                (timestamp, rx_data, speed)
+            )
 
         cumulative_samples = []
         if http_hist.CumulativeLengthGet() > 0:
@@ -286,7 +294,9 @@ class Example:
             uploaded = last_cumul.TxByteCountTotalGet()
             downloaded = last_cumul.RxByteCountTotalGet()
             timestamp = last_cumul.TimestampGet()
-            cumulative_samples.append((timestamp, mbit_s, uploaded, downloaded))
+            cumulative_samples.append(
+                (timestamp, mbit_s, uploaded, downloaded)
+            )
 
         return {
             'we': {
@@ -330,14 +340,17 @@ if __name__ == '__main__':
     with open('tx_tcp_server_interval.csv', 'a') as tx_results:
         for tx_sample in results['tx']:
             ts = human_readable_date(int(tx_sample[0]))
-            tx_results.write(make_csv_line(uuid, givenname, ts, *list(tx_sample)))
+            line = make_csv_line(uuid, givenname, ts, *list(tx_sample))
+            tx_results.write(line)
 
     with open('rx_tcp_server_interval.csv', 'a') as rx_results:
         for rx_sample in results['rx']:
             ts = human_readable_date(int(rx_sample[0]))
-            rx_results.write(make_csv_line(uuid, givenname, ts, *list(rx_sample)))
+            line = make_csv_line(uuid, givenname, ts, *list(rx_sample))
+            rx_results.write(line)
 
     with open('cumulative_http_server.csv', 'a') as res:
         for cumulative_sample in results['cumulative']:
             ts = human_readable_date(int(cumulative_sample[0]))
-            res.write(make_csv_line(uuid, givenname, ts, *list(cumulative_sample)))
+            line = make_csv_line(uuid, givenname, ts, *list(cumulative_sample))
+            res.write(line)

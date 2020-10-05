@@ -1,23 +1,25 @@
 """
-This examples builds on the basic IPv4 example, we show here extra how to configure a VLAN. 
+This examples builds on the basic IPv4 example, we show here extra how to
+configure a VLAN.
 We show both the config necessary for the transmitting and the receiving end.
 
 The goal of the script is to teach the impact of the VLAN on various parts of
-the code. As you'll notice the impact is very small. As a result we do suggest to first get familiar with the basic IPv4
-example. Here we'll only explain the extra config elements due to the VLAN.
+the code. As you'll notice the impact is very small. As a result we do suggest
+to first get familiar with the basic IPv4 example. Here we'll only explain the
+extra config elements due to the VLAN.
 
-For simplicity we won't show VLAN stacks (i.e. VLANs embedded in
-another VLAN). It's a small addition, we do suggest 
-to try it yourself, but don't hesitate to contact us at
-support.byteblower@excentis.com for help.
+For simplicity we won't show VLAN stacks (i.e. VLANs embedded in another VLAN).
+It's a small addition, we do suggest to try it yourself, but don't hesitate to
+contact us at support.byteblower@excentis.com for help.
 
 Copyright 2019, Excentis N.V.
 """
 
 from __future__ import print_function
-from byteblowerll.byteblower import ByteBlower
 
 from time import sleep
+
+from byteblowerll.byteblower import ByteBlower
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -50,7 +52,7 @@ configuration = {
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
-        #'ip': 'static',
+        # 'ip': 'static',
         # if staticv4, use ["ipaddress", netmask, gateway]
         'ip': ['172.24.107.130', "255.252.0.0", "172.24.0.1"],
     },
@@ -77,11 +79,25 @@ class Example:
         self.port_1 = None
         self.port_2 = None
 
+    def cleanup(self):
+        """Clean up the created objects"""
+        byteblower_instance = ByteBlower.InstanceGet()
+        if self.port_1:
+            self.server.PortDestroy(self.port_1)
+            self.port_1 = None
+
+        if self.port_2:
+            self.server.PortDestroy(self.port_2)
+            self.port_2 = None
+
+        if self.server is not None:
+            byteblower_instance.ServerRemove(self.server)
+            self.server = None
+
     def run(self):
         byteblower_instance = ByteBlower.InstanceGet()
 
-        print("Connecting to ByteBlower server {}...".format(
-            self.server_address))
+        print("Connecting to ByteBlower server %s..." % self.server_address)
         self.server = byteblower_instance.ServerAdd(self.server_address)
 
         print("Creating ports")
@@ -118,25 +134,21 @@ class Example:
         # In scapy Vlans are represented in the Dot1Q class.
         from scapy.all import Dot1Q
 
-        scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
-        scapy_udp_header = UDP(dport=udp_dest, sport=udp_src)
-        scapy_ip_header = IP(src=src_ip, dst=dst_ip)
+        udp_payload = Raw(payload.encode('ascii', 'strict'))
+        udp_header = UDP(dport=udp_dest, sport=udp_src)
+        ip_header = IP(src=src_ip, dst=dst_ip)
+        eth_header = Ether(src=src_mac, dst=dst_mac)
 
         # A stream will always send the packet just as configured.
-        # When the Tx ByteBlower port has a VLAN, we need to add it
-        # to frame to be sent.
-        # The following 5 lines are the only difference compared
-        # to the basic IPv4 example.
+        # When the Tx ByteBlower port has a VLAN, we need to add it to frame to
+        # be sent.  The following lines are the only difference compared to
+        # the basic IPv4 example.
         if 'vlan' in self.port_1_config:
             vlan_id = self.port_1_config['vlan']
-            scapy_frame = Ether(
-                src=src_mac, dst=dst_mac) / Dot1Q(
-                    vlan=vlan_id
-                ) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+            vlan_header = Dot1Q(vlan=vlan_id)
+            scapy_frame = eth_header / vlan_header / ip_header / udp_header / udp_payload
         else:
-            scapy_frame = Ether(
-                src=src_mac, dst=dst_mac
-            ) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+            scapy_frame = eth_header / ip_header / udp_header / udp_payload
 
         # As noted above, the remainder of the stream config is the same again.
         frame_content = bytearray(bytes(scapy_frame))
@@ -161,8 +173,8 @@ class Example:
             bpf_filter = "ip dst {} and udp port {}".format(dst_ip, udp_dest)
         trigger.FilterSet(bpf_filter)
 
-        # The above filter was the last change necessary in this method. The remainder,
-        #  result gathering and cleanup is the same.
+        # The above filter was the last change necessary in this method.
+        # The remainder, result gathering and cleanup is the same.
 
         # VLAN info will be list in the port description below.
         print("Current ByteBlower configuration:")
@@ -214,48 +226,37 @@ class Example:
         print("Sent {TX} frames, received {RX} frames".format(
             TX=tx_frames, RX=rx_frames))
 
-        # No specific cleanup is needed for the Vlan.
-        self.server.PortDestroy(self.port_1)
-        self.server.PortDestroy(self.port_2)
-        byteblower_instance.ServerRemove(self.server)
-
         return [tx_frames, rx_frames]
 
     def provision_port(self, config):
-        """
-            Applies the config parameter to a ByteBlower port.
+        """ Applies the config parameter to a ByteBlower port.
+        Little has changed in this example compared to IPv4.py. For the generic
+        info we suggest to look there.
 
-            Little has changed in this example compared to 
-            IPv4.py. For the generic info we suggest to 
-            look there.
-
-            The VLAN config is new. As you'll notice this is 
-            only a small part of the config.
+        The VLAN config is new. As you'll notice this is only a small part of
+        the config.
         """
         port = self.server.PortCreate(config['interface'])
         port_l2 = port.Layer2EthIISet()
         port_l2.MacSet(config['mac'])
 
-        # When the config has vlan, add this
-        # layer to the ByteBlower port.
-        # The extra layer ensures that the ByteBlowerPort
-        # performs basic functionality (DHCP, ARP,..) in
-        # the configured VLAN.
+        # When the config has vlan, add this layer to the ByteBlower port.
+        # The extra layer ensures that the ByteBlowerPort performs basic
+        # functionality (DHCP, ARP,..) in the configured VLAN.
         #
-        # This is the only change in this method compared
-        # to ipv4.py
-        # To keep things simple we'll only configure the Vlan ID. In
-        # the api reference, you'll find that it's also possible to configre
-        # priority count and drop eligable indicator.
+        # This is the only change in this method compared to ipv4.py
+        #
+        # To keep things simple we'll only configure the Vlan ID. In the api
+        # reference, you'll find that it's also possible to configure priority
+        # count and drop eligable indicator.
         if 'vlan' in config:
             vlan_id = int(config['vlan'])
             port_l2_5 = port.Layer25VlanAdd()
             port_l2_5.IDSet(vlan_id)
 
-        # The remainder of the config is independent of a
-        # VLAN config. When necessary the ByteBlower will
-        # will automatically add the VLAN to the appropriate
-        # protocols.
+        # The remainder of the config is independent of a VLAN config. When
+        # necessary the ByteBlower will automatically add the VLAN to the
+        # appropriate protocols.
         ip_config = config['ip']
         if not isinstance(ip_config, list):
             if ip_config.lower() == "dhcpv4":
@@ -301,4 +302,8 @@ class Example:
 # called.  This approach makes it possible to include it in a series of
 # examples.
 if __name__ == "__main__":
-    Example(**configuration).run()
+    example = Example(**configuration)
+    try:
+        example.run()
+    finally:
+        example.cleanup()

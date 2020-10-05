@@ -9,10 +9,7 @@ WirelessEndpoint --> ByteBlowerPort
 from __future__ import print_function
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower, ConfigError
-
-from byteblowerll.byteblower import DeviceStatus_Available
-from byteblowerll.byteblower import DeviceStatus_Reserved
-from byteblowerll.byteblower import DeviceStatus_Unavailable
+from byteblowerll.byteblower import DeviceStatus
 
 
 from scapy.packet import Raw
@@ -20,11 +17,11 @@ import datetime
 import os
 
 configuration = {
-    
-    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
+    # UUID of the ByteBlower WirelessEndpoint to use.
+    # This wireless endpoint *must* be registered to the meetingpoint
     # configured by meetingpoint_address.
-    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
-    # wireless endpoint.
+    # Special value: None.  When the UUID is set to None, the example will
+    # automatically select the first available wireless endpoint.
     'wireless_endpoint_uuid': '502d62e8-853f-496b-990b-731f25012f33',
 
     # duration, in nanoseconds
@@ -49,9 +46,10 @@ configuration = {
     # if static, use ["ipaddress", "netmask", "gateway"]
     # 'port_ip_address': ['172.16.0.4', '255.255.252.0', '172.16.0.1'],
 
-    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
-    # on this meetingpoint.
-    # Special value: None.  When the address is set to None, the server_address will be used.
+    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.
+    # The wireless endpoint *must* be registered on this meetingpoint.
+    # Special value: None.  When the address is set to None,
+    # the server_address will be used.
     'meetingpoint_address': None,
     
     # Name of the WiFi interface to query.
@@ -86,7 +84,8 @@ class Example:
 
         self.frame_size = kwargs['frame_size']
         self.duration = kwargs['duration']
-        self.interframe_gap_nanoseconds = int(1.0 * 1000 * 1000 * 1000 / kwargs['frames_per_second'])
+        frames_per_second =  kwargs['frames_per_second']
+        self.interframe_gap_nanoseconds = int(1.0 * 1e9 / frames_per_second)
         self.udp_srcport = kwargs['udp_srcport']
         self.udp_dstport = kwargs['udp_dstport']
 
@@ -111,7 +110,8 @@ class Example:
 
         # configure the IP addressing on the port
         port_layer3_config = self.port.Layer3IPv4Set()
-        if type(self.port_ip_address) is str and self.port_ip_address == 'dhcp':
+        if (type(self.port_ip_address) is str
+                and self.port_ip_address == 'dhcp'):
             # DHCP is configured on the DHCP protocol
             dhcp_protocol = port_layer3_config.ProtocolDhcpGet()
             dhcp_protocol.Perform()
@@ -134,10 +134,14 @@ class Example:
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
         print("Using wireless endpoint", self.wireless_endpoint.DescriptionGet())
 
+        # The wireless endpoint device info
+        device_info = self.wireless_endpoint.DeviceInfoGet()
+
         # Now we have the correct information to start configuring the flow.
 
         # The ByteBlower port will transmit frames to the wireless endpoint,
-        # This means we need to create a 'stream' on the ByteBlower port and a Trigger on the WirelessEndpoint
+        # This means we need to create a 'stream' on the ByteBlower port
+        # and a Trigger on the WirelessEndpoint
 
         stream = self.wireless_endpoint.TxStreamAdd()
         stream.InterFrameGapSet(self.interframe_gap_nanoseconds)
@@ -147,7 +151,8 @@ class Example:
         # a stream needs to send some data, so lets create a frame
         # For the frame, we need:
         # - The destination IP address (The IP address of the ByteBlower port)
-        # - The source and destination UDP ports (we configured this on top of this script)
+        # - The source and destination UDP ports (we configured this on top of
+        #   this script)
         # - a payload to transmit.
 
         port_layer3_config = self.port.Layer3IPv4Get()
@@ -158,7 +163,8 @@ class Example:
 
         payload_array = bytearray(bytes(scapy_udp_payload))
 
-        # The ByteBlower API expects an 'str' as input for the Frame::BytesSet(), we need to convert the bytearray
+        # The ByteBlower API expects an 'str' as input for the
+        # frame.BytesSet() method, we need to convert the bytearray
         hexbytes = ''.join((format(b, "02x") for b in payload_array))
 
         frame = stream.FrameAdd()
@@ -176,17 +182,21 @@ class Example:
         trigger = self.port.RxTriggerBasicAdd()
 
         # Trigger on a ByteBlower port uses BPF
-        # Note: We could generate a more effective filter which will only trigger the traffic,
-        #       but for demo purposes and taking NAT into account, we just keep it simple.
-        trigger.FilterSet("ip host " + port_ipv4 + " and udp port " + str(self.udp_dstport))
+        # Note: We could generate a more effective filter which will only
+        #       trigger the traffic, but for demo purposes and taking NAT into
+        #       account, we just keep it simple.
+        bpf = "ip host %s and udp port %d" % (port_ipv4, self.udp_dstport)
+        trigger.FilterSet(bpf)
 
-        # We also want the network information over time, to compare the RSSI vs the Loss
-        network_info_monitor = self.wireless_endpoint.DeviceInfoGet().NetworkInfoMonitorAdd()
+        # We also want the network information over time,
+        # so we can compare the RSSI vs the Loss
+
+        monitor = device_info.NetworkInfoMonitorAdd()
 
         # Now all configuration is made
         print(stream.DescriptionGet())
         print(trigger.DescriptionGet())
-        print(network_info_monitor.DescriptionGet())
+        print(monitor.DescriptionGet())
 
         # Make sure we are the only users for the wireless endpoint
         self.wireless_endpoint.Lock(True)
@@ -222,8 +232,7 @@ class Example:
 
             self.wireless_endpoint.Refresh()
             status = self.wireless_endpoint.StatusGet()
-            if (status == DeviceStatus_Reserved or
-                status == DeviceStatus_Unavailable):
+            if status in [DeviceStatus.Reserved, DeviceStatus.Unavailable]:
                 break
             sleep(1)
 
@@ -240,14 +249,15 @@ class Example:
         stream_history.Refresh()
         trigger_history = trigger.ResultHistoryGet()
         trigger_history.Refresh()
-        network_info_monitor_history = network_info_monitor.ResultHistoryGet()
-        network_info_monitor_history.Refresh()
+        monitor_history = monitor.ResultHistoryGet()
+        monitor_history.Refresh()
 
         results = []
-        for network_info_interval in network_info_monitor_history.IntervalGet():
-            timestamp = network_info_interval.TimestampGet()
 
-            network_interface = self.find_wifi_interface(network_info_interval.InterfaceGet())
+        for network_info_interval in monitor_history.IntervalGet():
+            timestamp = network_info_interval.TimestampGet()
+            network_interfaces = network_info_interval.InterfaceGet()
+            network_interface = self.find_wifi_interface(network_interfaces)
 
             result = {
                 'timestamp': timestamp,
@@ -268,7 +278,8 @@ class Example:
                 stream_interval = stream_history.IntervalGetByTime(timestamp)
                 result['tx_frames'] = stream_interval.PacketCountGet()
             except ConfigError as e:
-                print("ERROR: Could not get result for stream on timestamp", timestamp, ":", str(e))
+                print("ERROR: Could not get result for stream on timestamp",
+                      timestamp, ":", str(e))
 
             try:
                 trigger_interval = trigger_history.IntervalGetByTime(timestamp)
@@ -277,7 +288,8 @@ class Example:
                 throughput = self.frame_size * result['rx_frames'] * 8
                 result['throughput'] = throughput
             except ConfigError as e:
-                print("ERROR: Could not get result for trigger on timestamp", timestamp, ":", str(e))
+                print("ERROR: Could not get result for trigger on timestamp",
+                      timestamp, ":", str(e))
 
             if result['tx_frames'] != 0:
                 lost_frames = result['tx_frames'] - result['rx_frames']
@@ -299,11 +311,10 @@ class Example:
 
     def find_wifi_interface(self, interface_list):
         """"Looks for the wireless interface
+
         If wireless_interface is defined and not set to None, find this
-        interface
-        If it is not found, look for the first interface with type
-        NetworkInterfaceType_Wifi.
-        Else, return None
+        interface. If it is not found, look for the first interface with type
+        NetworkInterfaceType_Wifi. Otherwise, return None
 
         :param interface_list: List of interfaces to query
         :type interface_list: `byteblowerll.byteblower.NetworkInterfaceList`
@@ -336,14 +347,14 @@ class Example:
     def select_wireless_endpoint_uuid(self):
         """
         Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        If the device has the status 'Available', return its UUID,
+        otherwise return None
         :return: a string representing the UUID or None
         """
-        from byteblowerll.byteblower import DeviceStatus_Available
 
         for device in self.meetingpoint.DeviceListGet():
             # is the status Available?
-            if device.StatusGet() == DeviceStatus_Available:
+            if device.StatusGet() == DeviceStatus.Available:
                 # yes, return the UUID
                 print("Selecting device", device.DeviceIdentifierGet())
                 return device.DeviceIdentifierGet()

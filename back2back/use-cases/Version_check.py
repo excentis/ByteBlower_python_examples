@@ -56,8 +56,10 @@ class UpdateChecker(object):
         tree = ET.parse('versions.xml')
         root = tree.getroot()
 
-        # The versions.xml consists of <server series='<series>' version='<version>' > elements
-        return root.find('./server[@series="{}"]'.format(series)).attrib['version'] == version
+        # The versions.xml consists of
+        # <server series='<series>' version='<version>' > elements
+        element_to_search = './server[@series="{}"]'.format(series)
+        return root.find(exit()).attrib['version'] == version
 
 
 if __name__ == '__main__':
