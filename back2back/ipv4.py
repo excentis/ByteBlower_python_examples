@@ -147,9 +147,13 @@ class Example:
 
         # return the closest integer, since the API only allows integers to be
         # passed
-        return math.ceil(frame_interval)
+        return int(math.ceil(frame_interval))
 
     def run(self):
+        ethernet_header_len = 14
+        ip_header_len = 20
+        udp_header_len = 8
+        l2_header_without_crc = ethernet_header_len + ip_header_len + udp_header_len
         udp_src = 4096
         udp_dest = 4096
 
@@ -194,7 +198,7 @@ class Example:
         # the Layer3 configuration object
         dst_mac = self.port_1.Layer3IPv4Get().Resolve(dst_ip)
 
-        payload = 'a' * (self.frame_size - 42)
+        payload = 'a' * (self.frame_size - l2_header_without_crc)
 
         from scapy.layers.inet import UDP, IP, Ether
         from scapy.all import Raw
