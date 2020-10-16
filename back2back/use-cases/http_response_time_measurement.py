@@ -11,7 +11,7 @@ As you will notice, adding more TCP clients is easy!
 # Needed for python2 / python3 print function compatibility
 from __future__ import print_function
 
-import time, statistics, sys
+import time, statistics, sys, json, datetime
 
 # import the ByteBlower module
 from byteblowerll.byteblower import ByteBlower, RequestStartType
@@ -27,7 +27,19 @@ configuration = {
     'server_bb_port': {
         'interface': 'nontrunk-1',
         'mac': '00:bb:01:00:00:01',
+        # IP configuration for the ByteBlower Port.
+        # Options are 'DHCPv4', 'DHCPv6', 'SLAAC', 'static'
+        # if DHCPv4, use "dhcpv4"
         'ip': 'dhcpv4',
+        # if DHCPv6, use "dhcpv6"
+        # 'ip': 'dhcpv6',
+        # if SLAAC, use "slaac"
+        # 'ip': 'slaac',
+        # if staticv4, use ["ipaddress", netmask, gateway]
+        # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
+        # if staticv6, use ["ipaddress", prefixlength]
+        # 'ip': ['3000:3128::24', '64'],
+
 
         # The TCP Server listens new connections on this Port number.
         'tcp_listen_port': 4096
@@ -39,60 +51,67 @@ configuration = {
         'interface': 'trunk-1-50',
         'mac': '00:bb:01:00:00:02',
 
+        # IP configuration for the ByteBlower Port.
+        # Options are 'DHCPv4', 'DHCPv6', 'SLAAC', 'static'
+        # if DHCPv4, use "dhcpv4"
         'ip': 'dhcpv4',
+        # if DHCPv6, use "dhcpv6"
+        # ip': 'dhcpv6',
+        # if SLAAC, use "slaac"
+        # 'ip': 'slaac',
+        # if staticv4, use ["ipaddress", netmask, gateway]
+        # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
+        # if staticv6, use ["ipaddress", prefixlength]
+        # 'ip': ['3000:3128::24', '64'],
+
     },
 }
 
-    # A list of HTTP clients. These will all start on on the client
-    # ByteBlower Port.
-    # Each HTTP Client has a:
-    #     - http_method, this controls the direction of the traffic.
-    #     - the duration, this is one of available stop conditions of a
-    #       HTTP Server.
-    #
-    # Each client is time based, hence the duration parameter. Just as for the
-    # basic TCP example, this parameter uses nano-seconds as unit.
-test1 = {
+upload = {
+    'testname': 'upload_no_load',
     'http_clients': [
-        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 1000, 'is_load': False},
+        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
     ],
 }
 
-test2 = {
+upload_with_load = {
+    'testname': 'upload_with_load',
     'http_clients': [
-        {'http_method': 'GET', 'duration': 5000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
-        {'http_method': 'GET', 'duration': 5000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
-        {'http_method': 'GET', 'duration': 5000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
-        {'http_method': 'GET', 'duration': 5000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
-        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 3000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 3000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 3000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 3000000000, 'rate_limit': 1000, 'is_load': False},
+        {'http_method': 'GET', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
+        {'http_method': 'GET', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
+        {'http_method': 'GET', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
+        {'http_method': 'GET', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
+        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 5000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 5000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 5000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 5000000000, 'rate_limit': 10000, 'is_load': False},
     ],
 }
 
-test3 = {
+download = {
+    'testname': 'download_no_load',
     'http_clients': [
-        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 1000, 'is_load': False},
+        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
     ],
 }
 
-test4 = {
+download_with_load = {
+    'testname': 'download_with_load',
     'http_clients': [
-        {'http_method': 'PUT', 'duration': 5000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
-        {'http_method': 'PUT', 'duration': 5000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
-        {'http_method': 'PUT', 'duration': 5000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
-        {'http_method': 'PUT', 'duration': 5000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
-        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 3000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 3000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 3000000000, 'rate_limit': 1000, 'is_load': False},
-        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 3000000000, 'rate_limit': 1000, 'is_load': False},
+        {'http_method': 'PUT', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
+        {'http_method': 'PUT', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
+        {'http_method': 'PUT', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
+        {'http_method': 'PUT', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
+        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 5000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 5000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 5000000000, 'rate_limit': 10000, 'is_load': False},
+        {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 5000000000, 'rate_limit': 10000, 'is_load': False},
     ],
 }
 
@@ -119,6 +138,7 @@ class Example:
                 'initial_wait_time': config_initial_wait_time,
                 'is_load': is_load
             })
+        self.testcase = kwargs['testname']
 
         self.server = None
         self.server_bb_port = None
@@ -189,8 +209,8 @@ class Example:
             if not client_config['is_load']:
                 http_clients.append(http_client)
 
-        # print("Server port:", self.server_bb_port.DescriptionGet())
-        # print("Client port:", self.client_bb_port.DescriptionGet())
+        print("Server port:", self.server_bb_port.DescriptionGet())
+        print("Client port:", self.client_bb_port.DescriptionGet())
 
         # This is another difference with the basic TCP example.
         # The Start method on a ByteBlower Port starts all scheduled traffic
@@ -217,7 +237,7 @@ class Example:
             time.sleep(1)
 
             time_elapsed = time.time() - start_moment
-            print('%.2fs :: Waiting for clients to finish.' % time_elapsed)
+            print('%.1fs :: Waiting for clients to finish.' % time_elapsed)
 
             # Below is the second type of stop condition, a client based one.
             any_client_running = False
@@ -249,26 +269,33 @@ class Example:
         # to/from the HTTP Clients
         http_server.Stop()
 
-        server_number_of_clients = len(http_server.ClientIdentifiersGet())
-
-        # print("")
-        # print("HTTP Server info     ")
-        # print("-" * 10)
-        #
-        # print("Connected clients     : {} ".format(server_number_of_clients))
-        # print("")
-        #
-        # print("HTTP Client info     ")
-        # print("-" * 10)
-
         # Process each of the clients.
         results = []
         for client in http_clients:
             results.append(self.process_http_client(client))
 
+        minimum_http_response_time = round(min(results),3)
+        average_http_response_time = round(statistics.mean(results),3)
+
         print("List of HTTP Response Times: ", results)
-        print("Minimum HTTP Response Time : {} milliseconds".format(round(min(results),3)))
-        print("Average HTTP Response Time : {} milliseconds".format(round(statistics.mean(results),3)))
+        print("Minimum HTTP Response Time : {} milliseconds".format(minimum_http_response_time))
+        print("Average HTTP Response Time : {} milliseconds".format(average_http_response_time))
+        testcase = {}
+        testcase['time'] = datetime.datetime.now().__str__()
+        testcase['name'] = self.testcase
+        testcase['results'] = results
+        testcase['minimum'] = minimum_http_response_time
+        testcase['average'] = average_http_response_time
+        testcases = []
+        testcases.append(testcase)
+        file = {}
+        file['testcases'] = testcases
+        with open('data.json', 'w') as json_file:
+            # data = json.load(json_file)
+            # temp = data['testcases']
+            # temp.append(testcase)
+            json.dump(file, json_file, indent=4)
+
         return results
 
     def cleanup(self):
@@ -298,10 +325,10 @@ class Example:
         requested_duration = http_client.RequestDurationGet()
         initial_wait_time = http_client.RequestInitialTimeToWaitGet()
 
-        # print("Local TCP Port     : {} ".format(local_tcp_port))
-        # print("Direction          : {} ".format(http_method_string))
-        # print("Requested Duration : {} seconds".format(requested_duration/1e9))
-        # print("Requested Initial Wait Time : {} seconds".format(initial_wait_time/1e9))
+        print("Local TCP Port     : {} ".format(local_tcp_port))
+        print("Direction          : {} ".format(http_method_string))
+        print("Requested Duration : {} seconds".format(requested_duration/1e9))
+        print("Requested Initial Wait Time : {} seconds".format(initial_wait_time/1e9))
 
         request_status_value = http_client.RequestStatusGet()
 
@@ -316,14 +343,11 @@ class Example:
         http_session_info.Refresh()
         http_result = http_session_info.ResultGet()
         http_result.Refresh()
-        #print("TxTimestampFirstGet : {} ".format(http_result.TxTimestampFirstGet()))
-        #print("RxTimestampFirstGet : {} ".format(http_result.RxTimestampFirstGet()))
-        response_time = (http_result.RxTimestampFirstGet()-http_result.TxTimestampFirstGet())/1e6
-        #print("HTTP Response Time : {} milliseconds".format(response_time))
 
         tx_bytes = http_result.TxByteCountTotalGet()
         rx_bytes = http_result.RxByteCountTotalGet()
         avg_throughput = http_result.AverageDataSpeedGet()
+        response_time = (http_result.RxTimestampFirstGet() - http_result.TxTimestampFirstGet()) / 1e6
 
         # The TCP Session has all the OSI Layer 4 information.
         tcp_result = http_session_info.TcpSessionInfoGet().ResultGet()
@@ -334,13 +358,13 @@ class Example:
         from byteblowerll.byteblower import DataRate
         assert isinstance(avg_throughput, DataRate)
 
-        #print("TX Payload            : {} bytes".format(tx_bytes))
-        #print("RX Payload            : {} bytes".format(rx_bytes))
-        #print("Average Throughput    : {}".format(avg_throughput.toString()))
-        #print("Min Congestion Window : {} bytes".format(min_congestion))
-        #print("Max Congestion Window : {} bytes".format(max_congestion))
-        #print("Status                : {}".format(status))
-        #print("")
+        print("TX Payload            : {} bytes".format(tx_bytes))
+        print("RX Payload            : {} bytes".format(rx_bytes))
+        print("Average Throughput    : {}".format(avg_throughput.toString()))
+        print("Min Congestion Window : {} bytes".format(min_congestion))
+        print("Max Congestion Window : {} bytes".format(max_congestion))
+        print("Status                : {}".format(status))
+        print("")
 
         return response_time
 
@@ -392,7 +416,7 @@ class Example:
             if '/' in ip:
                 config['ip_address'] = ip.split('/')[0]
 
-        #print("Created port", port.DescriptionGet())
+        print("Created port", port.DescriptionGet())
         return port
 
 
@@ -403,14 +427,16 @@ if __name__ == "__main__":
     #print('Number of arguments:', len(sys.argv), 'arguments.')
     #print('Argument List:', str(sys.argv))
     #print(str(sys.argv[1]))
-    if str(sys.argv[1]) == "test1":
-        configuration = {**configuration, **test1}
-    elif str(sys.argv[1]) == "test2":
-        configuration = {**configuration, **test2}
-    elif str(sys.argv[1]) == "test3":
-        configuration = {**configuration, **test3}
+    if str(sys.argv[1]) == "upload":
+        configuration = {**configuration, **upload}
+    elif str(sys.argv[1]) == "upload_with_load":
+        configuration = {**configuration, **upload_with_load}
+    elif str(sys.argv[1]) == "download":
+        configuration = {**configuration, **download}
+    elif str(sys.argv[1]) == "download_with_load":
+        configuration = {**configuration, **download_with_load}
     else:
-        configuration = {**configuration, **test4}
+        configuration = {**configuration, **download_with_load}
     example = Example(**configuration)
     try:
         example.run()
