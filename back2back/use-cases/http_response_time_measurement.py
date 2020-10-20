@@ -11,7 +11,8 @@ As you will notice, adding more TCP clients is easy!
 # Needed for python2 / python3 print function compatibility
 from __future__ import print_function
 
-import time, statistics, sys, json, datetime
+import io
+import time, statistics, sys, json, datetime, os
 
 # import the ByteBlower module
 from byteblowerll.byteblower import ByteBlower, RequestStartType
@@ -68,7 +69,7 @@ configuration = {
 }
 
 upload = {
-    'testname': 'upload_no_load',
+    'testtype': 'upload_no_load',
     'http_clients': [
         {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
         {'http_method': 'PUT', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
@@ -78,7 +79,7 @@ upload = {
 }
 
 upload_with_load = {
-    'testname': 'upload_with_load',
+    'testtype': 'upload_with_load',
     'http_clients': [
         {'http_method': 'GET', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
         {'http_method': 'GET', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
@@ -92,7 +93,7 @@ upload_with_load = {
 }
 
 download = {
-    'testname': 'download_no_load',
+    'testtype': 'download_no_load',
     'http_clients': [
         {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
         {'http_method': 'GET', 'duration': 2000000000, 'initial_wait_time': 1000000000, 'rate_limit': 10000, 'is_load': False},
@@ -102,7 +103,7 @@ download = {
 }
 
 download_with_load = {
-    'testname': 'download_with_load',
+    'testtype': 'download_with_load',
     'http_clients': [
         {'http_method': 'PUT', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
         {'http_method': 'PUT', 'duration': 10000000000, 'initial_wait_time': 0, 'rate_limit': 0, 'is_load': True},
@@ -117,7 +118,7 @@ download_with_load = {
 
 
 
-class Example:
+class TestHttpResponseTime:
     def __init__(self, **kwargs):
         self.server_address = kwargs['server_address']
         self.server_bb_port_config = kwargs['server_bb_port']
@@ -138,7 +139,7 @@ class Example:
                 'initial_wait_time': config_initial_wait_time,
                 'is_load': is_load
             })
-        self.testcase = kwargs['testname']
+        self.testtype = kwargs['testtype']
 
         self.server = None
         self.server_bb_port = None
@@ -212,6 +213,13 @@ class Example:
         print("Server port:", self.server_bb_port.DescriptionGet())
         print("Client port:", self.client_bb_port.DescriptionGet())
 
+        time_of_day = datetime.datetime.now()
+        epoch = datetime.datetime.utcfromtimestamp(0)
+        epoch_time = (time_of_day - epoch).total_seconds() * 1000
+        filename = time_of_day.strftime("%Y%m%d-%H%M%S")
+        packetdump = self.server.PacketDumpCreate(self.client_bb_port_config['interface'])
+        #packetdump.Start(filename+'.pcap')
+
         # This is another difference with the basic TCP example.
         # The Start method on a ByteBlower Port starts all scheduled traffic
         # types.  This example this means all configured HTTPClients.
@@ -268,6 +276,7 @@ class Example:
         # This step is optional but has the advantage of stopping traffic
         # to/from the HTTP Clients
         http_server.Stop()
+        packetdump.Stop()
 
         # Process each of the clients.
         results = []
@@ -281,20 +290,31 @@ class Example:
         print("Minimum HTTP Response Time : {} milliseconds".format(minimum_http_response_time))
         print("Average HTTP Response Time : {} milliseconds".format(average_http_response_time))
         testcase = {}
-        testcase['time'] = datetime.datetime.now().__str__()
-        testcase['name'] = self.testcase
+        testcase['testtype'] = self.testtype
+        testcase['interface1'] = self.client_bb_port_config['interface']
+        testcase['interface2'] = self.server_bb_port_config['interface']
+        testcase['epoch'] = epoch_time
+        testcase['datetime'] = time_of_day.__str__()
         testcase['results'] = results
         testcase['minimum'] = minimum_http_response_time
         testcase['average'] = average_http_response_time
-        testcases = []
-        testcases.append(testcase)
-        file = {}
-        file['testcases'] = testcases
-        with open('data.json', 'w') as json_file:
-            # data = json.load(json_file)
-            # temp = data['testcases']
-            # temp.append(testcase)
-            json.dump(file, json_file, indent=4)
+        # checks if file exists
+        if os.path.isfile('results.json') and os.access('results.json', os.R_OK):
+            pass
+            #print("File exists and is readable")
+        else:
+            #print("Either file is missing or is not readable, creating file...")
+            with io.open('results.json', 'w') as db_file:
+                db_file.write(json.dumps({}))
+        with open('results.json', 'r+') as json_file:
+            data = json.load(json_file)
+            if 'testcases' in data.keys():
+                data['testcases'].append(testcase)
+            else:
+                testcases = [testcase]
+                data['testcases'] = testcases
+            json_file.seek(0)
+            json.dump(data, json_file, indent=4)
 
         return results
 
@@ -436,9 +456,9 @@ if __name__ == "__main__":
     elif str(sys.argv[1]) == "download_with_load":
         configuration = {**configuration, **download_with_load}
     else:
-        configuration = {**configuration, **download_with_load}
-    example = Example(**configuration)
+        configuration = {**configuration, **upload}
+    testcase = TestHttpResponseTime(**configuration)
     try:
-        example.run()
+        testcase.run()
     finally:
-        example.cleanup()
+        testcase.cleanup()
