@@ -444,21 +444,27 @@ class TestHttpResponseTime:
 # called.  This approach makes it possible to include it in a series of
 # examples.
 if __name__ == "__main__":
-    #print('Number of arguments:', len(sys.argv), 'arguments.')
-    #print('Argument List:', str(sys.argv))
-    #print(str(sys.argv[1]))
-    if str(sys.argv[1]) == "upload":
-        configuration = {**configuration, **upload}
-    elif str(sys.argv[1]) == "upload_with_load":
-        configuration = {**configuration, **upload_with_load}
-    elif str(sys.argv[1]) == "download":
-        configuration = {**configuration, **download}
-    elif str(sys.argv[1]) == "download_with_load":
-        configuration = {**configuration, **download_with_load}
+    if len(sys.argv) > 1:
+        if str(sys.argv[1]) == "upload":
+            configuration = {**configuration, **upload}
+        elif str(sys.argv[1]) == "upload_with_load":
+            configuration = {**configuration, **upload_with_load}
+        elif str(sys.argv[1]) == "download":
+            configuration = {**configuration, **download}
+        elif str(sys.argv[1]) == "download_with_load":
+            configuration = {**configuration, **download_with_load}
+        else:
+            configuration = {**configuration, **upload}
+        testcase = TestHttpResponseTime(**configuration)
+        try:
+            testcase.run()
+        finally:
+            testcase.cleanup()
     else:
-        configuration = {**configuration, **upload}
-    testcase = TestHttpResponseTime(**configuration)
-    try:
-        testcase.run()
-    finally:
-        testcase.cleanup()
+        for testcase in [upload, upload_with_load, download, download_with_load]:
+            configuration = {**configuration, **testcase}
+            testcase = TestHttpResponseTime(**configuration)
+            try:
+                testcase.run()
+            finally:
+                testcase.cleanup()
