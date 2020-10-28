@@ -105,7 +105,7 @@ class Example:
         # ( test_duration / sample_duration) is just enough, so we are doubling
         # this so we have more than enough
         sample_count = int(math.ceil(2 * (self.duration / sample_duration)))
-        
+
         instance = ByteBlower.InstanceGet()
         assert isinstance(instance, ByteBlower)
 
