@@ -1,11 +1,12 @@
 from __future__ import print_function
-import time
-import random
+
 import datetime
+import math
+import random
+import sys
+import time
 
 from byteblowerll.byteblower import ByteBlower, DeviceStatus
-import sys
-
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -51,7 +52,7 @@ configuration = {
     #        webserver
     # 'http_method': 'GET',
     'http_method': 'PUT',
-    
+
     # duration, in nanoseconds
     # Duration of the session
     'duration': 10000000000,
@@ -97,7 +98,7 @@ class Example:
         # number of samples to take:
         # ( test_duration / sample_duration) is just enough, so we are doubling
         # this so we have more than enough
-        sample_count = 2 * (self.duration / sample_duration)
+        sample_count = int(math.ceil(2 * (self.duration / sample_duration)))
 
         instance = ByteBlower.InstanceGet()
         assert isinstance(instance, ByteBlower)
@@ -187,7 +188,7 @@ class Example:
             self.wireless_endpoint.Start()
         except Exception as e:
             print("Error couldn't start the WE")
-            print(e.message)
+            print(str(e))
             sys.exit(-1)
 
         # Wait until the device returns.
