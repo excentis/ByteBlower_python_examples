@@ -6,7 +6,7 @@ Copyright 2018, Excentis N.V.
 """
 
 from __future__ import print_function
-from byteblowerll.byteblower import ByteBlower
+from byteblowerll.byteblower import ByteBlower, DeviceStatus
 
 
 configuration = {
@@ -25,15 +25,17 @@ configuration = {
     # if static, use ["ipaddress", "netmask", "gateway"]
     # 'port_ip_address': ['172.16.0.4', '255.255.252.0', '172.16.0.1'],
 
-    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
-    # on this meetingpoint.
-    # Special value: None.  When the address is set to None, the server_address will be used.
+    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.
+    # The wireless endpoint *must* be registered on this meetingpoint.
+    # Special value: None.  When the address is set to None,
+    # the server_address will be used.
     'meetingpoint_address': None,
 
-    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
+    # UUID of the ByteBlower WirelessEndpoint to use.
+    # This wireless endpoint *must* be registered to the meetingpoint
     # configured by meetingpoint_address.
-    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
-    # wireless endpoint.
+    # Special value: None.  When the UUID is set to None, the example will
+    # automatically select the first available wireless endpoint.
     # 'wireless_endpoint_uuid': None,
     'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
 
@@ -43,7 +45,8 @@ configuration = {
     # Number of frames to send.
     'number_of_frames': 2000,
 
-    # How fast must the frames be sent.  e.g. every 10 milliseconds (=10000000 nanoseconds)
+    # How fast must the frames be sent.
+    # e.g. every 10 milliseconds (=10000000 nanoseconds)
     'interframe_gap_nanoseconds': 10000000,
 
     'udp_srcport': 4096,
@@ -78,7 +81,7 @@ class Example:
     def run(self):
         byteblower_instance = ByteBlower.InstanceGet()
 
-        print("Connecting to ByteBlower server {}...".format(self.server_address))
+        print("Connecting to ByteBlower server %s..." % self.server_address)
         self.server = byteblower_instance.ServerAdd(self.server_address)
 
         # Create the port which will be the HTTP server (port_1)
@@ -92,7 +95,8 @@ class Example:
         # configure the IP addressing on the port
         port_layer3_config = self.port.Layer3IPv4Set()
 
-        if type(self.port_ip_address) is str and self.port_ip_address == 'dhcp':
+        if (type(self.port_ip_address) is str
+                and self.port_ip_address == 'dhcp'):
             # DHCP is configured on the DHCP protocol
             dhcp_protocol = port_layer3_config.ProtocolDhcpGet()
             dhcp_protocol.Perform()
@@ -111,11 +115,14 @@ class Example:
 
         # Get the WirelessEndpoint device
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
-        print("Using wireless endpoint", self.wireless_endpoint.DescriptionGet())
+        print("Using wireless endpoint",
+              self.wireless_endpoint.DescriptionGet())
 
-        # the destination MAC is the MAC address of the destination port if the destination port is in the same
-        # subnet as the source port, otherwise it will be the MAC address of the gateway.
-        # ByteBlower has a function to resolve the correct MAC address in the Layer3 configuration object
+        # the destination MAC is the MAC address of the destination port if
+        # the destination port is in the same subnet as the source port,
+        # otherwise it will be the MAC address of the gateway.
+        # ByteBlower has a function to resolve the correct MAC address in
+        # the Layer3 configuration object
         network_info = self.wireless_endpoint.DeviceInfoGet().NetworkInfoGet()
         wireless_endpoint_ipv4 = network_info.IPv4Get()
 
@@ -123,16 +130,20 @@ class Example:
         port_layer3_config = self.port.Layer3IPv4Get()
         port_ipv4 = port_layer3_config.IpGet()
 
-        # destination MAC must be resolved, since we do not know whether the WE is available on the local LAN
+        # destination MAC must be resolved, since we do not know whether
+        # the wireless endpoint is available on the local LAN
         destination_mac = port_layer3_config.Resolve(wireless_endpoint_ipv4)
 
         payload = 'a' * (self.frame_size - 42)
 
-        # Add 2 seconds of rollout, so frames in transit can be counted too
-        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames + 2000000000
+        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames
 
-        # create a latency-enabled trigger.  A trigger is an object which receives data.
-        # The Basic trigger just count packets, a LatencyBasic trigger analyzes the timestamps embedded in the
+        # Add 2 seconds of rollout, so frames in transit can be counted too
+        duration_ns += 2 * 1000 * 1000 * 1000
+
+        # create a latency-enabled trigger.  A trigger is an object which
+        # receives data.  The Basic trigger just count packets,
+        # a LatencyBasic trigger analyzes the timestamps embedded in the
         # received frame.
         latency_trigger = self.wireless_endpoint.RxLatencyBasicAdd()
 
@@ -148,21 +159,25 @@ class Example:
 
         from scapy.layers.inet import UDP, IP, Ether
         from scapy.all import Raw
-        scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
-        scapy_udp_header = UDP(dport=self.udp_dstport, sport=self.udp_srcport, chksum=0)
-        scapy_ip_header = IP(src=port_ipv4, dst=wireless_endpoint_ipv4)
-        scapy_frame = Ether(src=port_mac, dst=destination_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+        udp_payload = Raw(payload.encode('ascii', 'strict'))
+        udp_header = UDP(dport=self.udp_dstport, sport=self.udp_srcport, chksum=0)
+        ip_header = IP(src=port_ipv4, dst=wireless_endpoint_ipv4)
+        eth_header = Ether(src=port_mac, dst=destination_mac)
+        scapy_frame = eth_header / ip_header / udp_header / udp_payload
 
         frame_content = bytearray(bytes(scapy_frame))
 
-        # The ByteBlower API expects an 'str' as input for the Frame::BytesSet(), we need to convert the bytearray
+        # The ByteBlower API expects an 'str' as input for the
+        # frame.BytesSet() method, we need to convert the bytearray
         hexbytes = ''.join((format(b, "02x") for b in frame_content))
 
-        # a stream transmits frames, so we need to tell the stream which frames we want to transmit
+        # Since a stream transmits frames, we need to tell the stream which
+        # frames we want to transmit
         frame = stream.FrameAdd()
         frame.BytesSet(hexbytes)
 
-        # Enable latency for this frame.  The frame frame contents will be altered so it contains a timestamp.
+        # Enable latency for this frame.  The frame frame contents will be
+        # altered so it contains a timestamp.
         frame_tag = frame.FrameTagTimeGet()
         frame_tag.Enable(True)
 
@@ -172,13 +187,15 @@ class Example:
         # Upload the configuration to the wireless endpoint
         self.wireless_endpoint.Prepare()
 
-        # print the configuration, this makes it easy to review what we have done until now
+        # print the configuration
+        # This makes it easy to review what we have done until now
         print("Current ByteBlower configuration:")
         print("port:", self.port.DescriptionGet())
         print("wireless endpoint:", self.wireless_endpoint.DescriptionGet())
 
-        # start the traffic, clear the latency trigger.  Triggers are active as soon they are created, so
-        # we may want to clear the data it already has collected.
+        # start the traffic, clear the latency trigger.  Triggers are active
+        # as soon they are created, so we may want to clear the data it already
+        # has collected.
         print("Starting traffic")
         latency_trigger.ResultClear()
 
@@ -205,13 +222,14 @@ class Example:
         print("Done sending traffic (time elapsed)")
 
         # Waiting for a second after the stream is finished.
-        # This has the advantage that frames that were transmitted but not received yet,
-        # can be processed by the server
+        # This has the advantage that frames that were transmitted but were
+        # not received yet, can be processed by the server
         print("Waiting for a second")
         sleep(1)
 
-        # During the test itself we queried the interval counters, there are also cumulative counters.
-        # The last cumulative counter available in the history is also available as the Result
+        # During the test itself we queried the interval counters, there are
+        # also cumulative counters.  The last cumulative counter available in
+        # the history is also available as the Result
         self.wireless_endpoint.ResultGet()
         stream_result = stream.ResultGet()
         latency_result = latency_trigger.ResultGet()
@@ -255,16 +273,16 @@ class Example:
             instance.ServerRemove(self.server)
 
     def select_wireless_endpoint_uuid(self):
-        """
+        """Select a suitable wireless endpoint
         Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        If the device has the status 'Available', return its UUID,
+        otherwise return None
         :return: a string representing the UUID or None
         """
-        from byteblowerll.byteblower import DeviceStatus_Available
 
         for device in self.meetingpoint.DeviceListGet():
             # is the status Available?
-            if device.StatusGet() == DeviceStatus_Available:
+            if device.StatusGet() == DeviceStatus.Available:
                 # yes, return the UUID
                 return device.DeviceIdentifierGet()
 

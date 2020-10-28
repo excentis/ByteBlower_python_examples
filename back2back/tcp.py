@@ -1,9 +1,9 @@
 """
-Basic IPv4 Example for the ByteBlower Python API.
-All examples are garanteed to work with Python 2.7 and above
+Basic IPv4 TCP Example for the ByteBlower Python API.
+All examples are guaranteed to work with Python 2.7 and above
 
-This example show how to use TCP with ByteBlower. This all happens
-in the run method of the Example class.
+This example show how to use TCP with ByteBlower. This all happens in the
+run method of the Example class.
 
 The ByteBlower port configuration is very flexible, you can configure
  * IPv4 (static or DHCP)
@@ -16,12 +16,12 @@ from __future__ import print_function
 # import the ByteBlower module
 import byteblowerll.byteblower as byteblower
 
-
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
     'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
 
-    # Configuration for the first ByteBlower port.  Will be used as HTTP server.
+    # Configuration for the first ByteBlower port.
+    # Will be used as HTTP server.
     'port_1_config': {
         'interface': 'trunk-1-20',
         'mac': '00:bb:01:00:00:01',
@@ -41,12 +41,14 @@ configuration = {
         # Optionally you can define a VLAN.
         'vlan': 2,
 
-        # TCP port number to be used by the HTTP connection.  On the HTTP server,
-        # this will be the port on which the server listens.
+        # TCP port number to be used by the HTTP connection.
+        # On the HTTP server, this will be the port on which the
+        # server listens.
         'tcp_port': 4096
     },
 
-    # Configuration for the second ByteBlower port.  Will be used as HTTP client.
+    # Configuration for the second ByteBlower port.
+    # Will be used as HTTP client.
     'port_2_config': {
         'interface': 'trunk-1-14',
         'mac': '00:bb:01:00:00:02',
@@ -63,8 +65,9 @@ configuration = {
         # if staticv6, use ["ipaddress", prefixlength]
         # 'ip': ['3000:3128::24', '64'],
 
-        # TCP port number to be used by the HTTP connection.  On the HTTP client,
-        # this will be the local port the client uses to connect to the server.
+        # TCP port number to be used by the HTTP connection.
+        # On the HTTP client, this will be the local port the client uses to
+        # connect to the server.
         'tcp_port': 4096
     },
 
@@ -81,9 +84,9 @@ configuration = {
     'duration': None,
     # 'duration': 5000000000,
 
-
     # request size
-    # Number of bytes to download/upload, if None is given, the duration will be used
+    # Number of bytes to download/upload, if None is given, the duration will
+    # be used
     # 'request_size': None,
     'request_size': 1000000,
 
@@ -101,8 +104,8 @@ class Example:
         # Helper function, we can use this to parse the HTTP Method to the
         # enumeration used by the API
         from byteblowerll.byteblower import ParseHTTPRequestMethodFromString
-
-        self.http_method = ParseHTTPRequestMethodFromString(kwargs['http_method'])
+        http_method_arg = kwargs['http_method']
+        self.http_method = ParseHTTPRequestMethodFromString(http_method_arg)
         self.duration = kwargs['duration']
         self.request_size = kwargs['request_size']
         self.tos = kwargs['tos']
@@ -111,10 +114,16 @@ class Example:
         self.port_1 = None
         self.port_2 = None
 
+    def cleanup(self):
+        byteblower_instance = byteblower.ByteBlower.InstanceGet()
+        if self.server is not None:
+            byteblower_instance.ServerRemove(self.server)
+            self.server = None
+
     def run(self):
         byteblower_instance = byteblower.ByteBlower.InstanceGet()
 
-        print("Connecting to ByteBlower server {}...".format(self.server_address))
+        print("Connecting to ByteBlower server %s..." % self.server_address)
         self.server = byteblower_instance.ServerAdd(self.server_address)
 
         # Create the port which will be the HTTP server (port_1)
@@ -143,8 +152,10 @@ class Example:
         http_client.RemotePortSet(server_tcp_port)
 
         # Configure the direction.
-        # If the HTTP Method is GET, traffic will flow from the HTTP server to the HTTP client
-        # If the HTTP Method is PUT, traffic will flow from the HTTP client to the HTTP server
+        # If the HTTP Method is GET,
+        #     traffic will flow from the HTTP server to the HTTP client
+        # If the HTTP Method is PUT,
+        #     traffic will flow from the HTTP client to the HTTP server
         http_client.HttpMethodSet(self.http_method)
 
         print("Server port:", self.port_1.DescriptionGet())
@@ -154,7 +165,8 @@ class Example:
         http_server.Start()
 
         if self.duration is not None:
-            # let the HTTP Client request a page of a specific duration to download...
+            # let the HTTP Client request a page of a specific duration to
+            # download...
             http_client.RequestDurationSet(self.duration)
         elif self.request_size is not None:
             # let the HTTP Client request a page of a specific size...
@@ -177,7 +189,8 @@ class Example:
 
         http_client_session_info = http_client.HttpSessionInfoGet()
         http_client_session_info.Refresh()
-        print("HTTP Client's Session Information:", http_client_session_info.DescriptionGet())
+        print("HTTP Client's Session Information:",
+              http_client_session_info.DescriptionGet())
 
         request_status_value = http_client.RequestStatusGet()
 
@@ -194,8 +207,8 @@ class Example:
 
         min_congestion = tcp_result.CongestionWindowMinimumGet()
         max_congestion = tcp_result.CongestionWindowMaximumGet()
+        status_string = byteblower.ConvertHTTPRequestStatusToString(request_status_value)
 
-        byteblower_instance.ServerRemove(self.server)
         print("Requested Payload Size: {} bytes".format(self.request_size))
         print("Requested Duration    : {} nanoseconds".format(self.duration))
         print("TX Payload            : {} bytes".format(tx_bytes))
@@ -203,10 +216,13 @@ class Example:
         print("Average Throughput    : {}".format(avg_throughput.toString()))
         print("Min Congestion Window : {} bytes".format(min_congestion))
         print("Max Congestion Window : {} bytes".format(max_congestion))
-        print("Status                : {}".format(byteblower.ConvertHTTPRequestStatusToString(request_status_value)))
+        print("Status                : {}".format(status_string))
 
-        return [self.request_size, self.duration,
-                tx_bytes, rx_bytes, avg_throughput.toString(), min_congestion, max_congestion, request_status_value]
+        return [
+            self.request_size, self.duration,
+            tx_bytes, rx_bytes, avg_throughput.toString(),
+            min_congestion, max_congestion, request_status_value
+        ]
 
     def provision_port(self, config):
         port = self.server.PortCreate(config['interface'])
@@ -264,4 +280,8 @@ class Example:
 # called.  This approach makes it possible to include it in a series of
 # examples.
 if __name__ == "__main__":
-    Example(**configuration).run()
+    example = Example(**configuration)
+    try:
+        example.run()
+    finally:
+        example.cleanup()

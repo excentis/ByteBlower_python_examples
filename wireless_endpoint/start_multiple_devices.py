@@ -4,7 +4,9 @@ import datetime
 import sys
 import time
 
-from byteblowerll.byteblower import ByteBlower, DeviceStatus, WirelessEndpointList, ConfigError
+from byteblowerll.byteblower import ByteBlower, ConfigError
+from byteblowerll.byteblower import ParseHTTPRequestMethodFromString
+from byteblowerll.byteblower import WirelessEndpointList, DeviceStatus
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -48,7 +50,7 @@ configuration = {
     #        webserver
     # 'http_method': 'GET',
     'http_method': 'PUT',
-    
+
     # duration, in nanoseconds
     # Duration of the session
     'duration': 10000000000,
@@ -65,18 +67,17 @@ class Example:
         self.port_mac_address = kwargs.pop('port_mac_address')
         self.port_ip_address = kwargs.pop('port_ip_address')
 
-        self.meetingpoint_address = kwargs.pop('meetingpoint_address', self.server_address)
+        self.meetingpoint_address = kwargs.pop('meetingpoint_address',
+                                               self.server_address)
         if self.meetingpoint_address is None:
             self.meetingpoint_address = self.server_address
 
-        self.wireless_endpoint_uuid_list = kwargs.pop('wireless_endpoint_uuids', [])
+        self.wireless_endpoint_uuids = kwargs.pop('wireless_endpoint_uuids',
+                                                  [])
         self.port_tcp_port = kwargs.pop('port_tcp_port', 80)
 
-        # Helper function, we can use this to parse the HTTP Method to the
-        # enumeration used by the API
-        from byteblowerll.byteblower import ParseHTTPRequestMethodFromString
-
-        self.http_method = ParseHTTPRequestMethodFromString(kwargs.pop('http_method', 'GET'))
+        http_method = kwargs.pop('http_method', 'GET')
+        self.http_method = ParseHTTPRequestMethodFromString(http_method)
         self.duration = kwargs.pop('duration', 10000000000)
         self.tos = kwargs.pop('tos', 0)
 
@@ -163,21 +164,24 @@ class Example:
         # Connect to the meetingpoint
         self.meetingpoint = instance.MeetingPointAdd(self.meetingpoint_address)
 
-        # Get the maximum of devices allowed by the license, so we can limit the number of devices we lock.
-        license = self.meetingpoint.ServiceInfoGet().LicenseGet()
-        max_devices_allowed = license.NumberOfWirelessEndpointsGet()
+        # Get the maximum of devices allowed by the license, so we can limit
+        # the number of devices we lock.
+        byteblower_license = self.meetingpoint.ServiceInfoGet().LicenseGet()
+        max_devices_allowed = byteblower_license.NumberOfWirelessEndpointsGet()
 
         # If no WirelessEndpoint UUID was given, search an available one.
-        if not self.wireless_endpoint_uuid_list:
-            self.wireless_endpoint_uuid_list = self.select_wireless_endpoint_uuids()
+        if not self.wireless_endpoint_uuids:
+            self.wireless_endpoint_uuids = self.select_wireless_endpoint_uuids()
 
         # Limit the number of wireless endpoints to the number we fetched earlier.
-        if len(self.wireless_endpoint_uuid_list) > max_devices_allowed:
-            self.wireless_endpoint_uuid_list = self.wireless_endpoint_uuid_list[:max_devices_allowed]
+        if len(self.wireless_endpoint_uuids) > max_devices_allowed:
+            first_devices = self.wireless_endpoint_uuids[:max_devices_allowed]
+            self.wireless_endpoint_uuids = first_devices
 
         # Get the WirelessEndpoint devices
+        self.wireless_endpoints = [self.meetingpoint.DeviceGet(uuid)
+                                   for uuid in self.wireless_endpoint_uuids]
 
-        self.wireless_endpoints = [self.meetingpoint.DeviceGet(uuid) for uuid in self.wireless_endpoint_uuid_list]
         print("Using wireless endpoints:")
         for wireless_endpoint in self.wireless_endpoints:
             print(wireless_endpoint.DescriptionGet())
@@ -221,8 +225,9 @@ class Example:
         starttime_ns = self.meetingpoint.DevicesStart(all_wireless_endpoints)
         now_ns = self.meetingpoint.TimestampGet()
         time_to_wait_ns = starttime_ns - now_ns
-        time_to_wait = datetime.timedelta(microseconds=time_to_wait_ns/1000)
-        print("Waiting for", time_to_wait.total_seconds(), "seconds for the devices to start.")
+        time_to_wait = datetime.timedelta(microseconds=time_to_wait_ns / 1000)
+        print("Waiting for", time_to_wait.total_seconds(),
+              "seconds for the devices to start.")
         time.sleep(time_to_wait.total_seconds())
 
         print("Devices started.")
@@ -238,7 +243,9 @@ class Example:
             running_devices = 0
 
             for wireless_endpoint in self.wireless_endpoints:
-                allowed_statusses = [DeviceStatus.Reserved, DeviceStatus.Available]
+                allowed_statusses = [DeviceStatus.Reserved,
+                                     DeviceStatus.Available
+                                     ]
 
                 # The wireless Endpoint is running a test when it is
                 # - Armed
@@ -249,7 +256,8 @@ class Example:
                     still_running = True
                     running_devices += 1
 
-            print(running_devices, "running,", len(http_server.ClientIdentifiersGet()), "clients connected")
+            print(running_devices, "running,",
+                  len(http_server.ClientIdentifiersGet()), "clients connected")
 
         print("All devices finished.")
 
@@ -283,7 +291,8 @@ class Example:
     def select_wireless_endpoint_uuids(self):
         """
         Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        If the device has the status 'Available', return its UUID,
+        otherwise return None
         :return: a list of strings representing the UUIDs
         :rtype: list
         """
@@ -305,8 +314,10 @@ class Example:
         cumulative = history.CumulativeLatestGet()
 
         mbit_s = cumulative.AverageDataSpeedGet().MbpsGet()
-        first = min([cumulative.RxTimestampFirstGet(), cumulative.TxTimestampFirstGet()])
-        last = max([cumulative.RxTimestampLastGet(), cumulative.TxTimestampLastGet()])
+        first = min([cumulative.RxTimestampFirstGet(),
+                     cumulative.TxTimestampFirstGet()])
+        last = max([cumulative.RxTimestampLastGet(),
+                    cumulative.TxTimestampLastGet()])
 
         return {
             'throughput': mbit_s,

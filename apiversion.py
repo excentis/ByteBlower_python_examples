@@ -1,8 +1,8 @@
 """
     Prints out the version of the ByteBlower API.
     
-    Running this script is an easy check wether 
-    everything is installed properly.
+    Running this script is an easy check whether everything is
+    installed properly.
 """
 from __future__ import print_function
 import byteblowerll.byteblower as byteblower

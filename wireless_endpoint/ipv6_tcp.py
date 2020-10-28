@@ -3,7 +3,7 @@ import time
 import random
 import datetime
 
-from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved
+from byteblowerll.byteblower import ByteBlower, DeviceStatus
 import sys
 
 
@@ -86,7 +86,8 @@ class Example:
         # enumeration used by the API
         from byteblowerll.byteblower import ParseHTTPRequestMethodFromString
 
-        self.http_method = ParseHTTPRequestMethodFromString(kwargs['http_method'])
+        http_method = kwargs['http_method']
+        self.http_method = ParseHTTPRequestMethodFromString(http_method)
         self.duration = kwargs['duration']
         self.tos = kwargs['tos']
 
@@ -119,11 +120,13 @@ class Example:
 
         # configure the IP addressing on the port
         port_layer3_config = self.port.Layer3IPv6Set()
-        if type(self.port_ip_address) is str and self.port_ip_address.lower() == 'dhcp':
+        if (type(self.port_ip_address) is str
+                and self.port_ip_address.lower() == 'dhcp'):
             # DHCP is configured on the DHCP protocol
             dhcp_protocol = port_layer3_config.ProtocolDhcpGet()
             dhcp_protocol.Perform()
-        elif type(self.port_ip_address) is str and self.port_ip_address.lower() == 'slaac':
+        elif (type(self.port_ip_address) is str
+              and self.port_ip_address.lower() == 'slaac'):
             # wait for stateless autoconfiguration to complete
             port_layer3_config.StatelessAutoconfiguration()
         else:
@@ -144,7 +147,8 @@ class Example:
 
         # Get the WirelessEndpoint device
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
-        print("Using wireless endpoint", self.wireless_endpoint.DescriptionGet())
+        print("Using wireless endpoint",
+              self.wireless_endpoint.DescriptionGet())
 
         # Now we have the correct information to start configuring the flow.
 
@@ -186,7 +190,7 @@ class Example:
         if self.port_ip_address == "dhcp":
             ipv6_addresses = port_layer3_config.IpDhcpGet()
         elif self.port_ip_address == "slaac":
-                ipv6_addresses = port_layer3_config.IpStatelessGet()
+            ipv6_addresses = port_layer3_config.IpStatelessGet()
         elif isinstance(self.port_ip_address, list):
             ipv6_addresses = port_layer3_config.IpManualGet()
 
@@ -221,12 +225,13 @@ class Example:
         # 'DeviceStatus_Reserved', since we have a Lock on the device.
         status = self.wireless_endpoint.StatusGet()
         start_moment = datetime.datetime.now()
-        while status != DeviceStatus_Reserved:
+        while status != DeviceStatus.Reserved:
             time.sleep(1)
             status = self.wireless_endpoint.StatusGet()
             now = datetime.datetime.now()
             print(str(now), ":: Running for", str(now - start_moment), "::",
-                  http_server.ClientIdentifiersGet().size(), "client(s) connected")
+                  http_server.ClientIdentifiersGet().size(),
+                  "client(s) connected")
 
         # Wireless Endpoint has returned. Collect and process the results.
 
@@ -275,11 +280,10 @@ class Example:
         If the device has the status 'Available', return its UUID, otherwise return None
         :return: a string representing the UUID or None
         """
-        from byteblowerll.byteblower import DeviceStatus_Available
 
         for device in self.meetingpoint.DeviceListGet():
             # is the status Available?
-            if device.StatusGet() == DeviceStatus_Available:
+            if device.StatusGet() == DeviceStatus.Available:
                 # yes, return the UUID
                 return device.DeviceIdentifierGet()
 
@@ -353,14 +357,17 @@ if __name__ == '__main__':
     with open('tx_tcp_server_interval.csv', 'a') as tx_results:
         for tx_sample in results['tx']:
             ts = human_readable_date(int(tx_sample[0]))
-            tx_results.write(make_csv_line(uuid, givenname, ts, *list(tx_sample)))
+            line = make_csv_line(uuid, givenname, ts, *list(tx_sample))
+            tx_results.write(line)
 
     with open('rx_tcp_server_interval.csv', 'a') as rx_results:
         for rx_sample in results['rx']:
             ts = human_readable_date(int(rx_sample[0]))
-            rx_results.write(make_csv_line(uuid, givenname, ts, *list(rx_sample)))
+            line = make_csv_line(uuid, givenname, ts, *list(rx_sample))
+            rx_results.write(line)
 
     with open('cumulative_http_server.csv', 'a') as res:
         for cumulative_sample in results['cumulative']:
             ts = human_readable_date(int(cumulative_sample[0]))
-            res.write(make_csv_line(uuid, givenname, ts, *list(cumulative_sample)))
+            line = make_csv_line(uuid, givenname, ts, *list(cumulative_sample))
+            res.write(line)

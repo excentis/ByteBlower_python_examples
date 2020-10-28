@@ -7,7 +7,7 @@ import time
 import random
 import datetime
 
-from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved, ConfigError
+from byteblowerll.byteblower import ByteBlower, DeviceStatus, ConfigError
 import os
 import sys
 
@@ -194,7 +194,7 @@ class Example:
         # 'DeviceStatus_Reserved', since we have a Lock on the device.
         status = self.wireless_endpoint.StatusGet()
         start_moment = datetime.datetime.now()
-        while status != DeviceStatus_Reserved:
+        while status != DeviceStatus.Reserved:
             time.sleep(1)
             status = self.wireless_endpoint.StatusGet()
             now = datetime.datetime.now()

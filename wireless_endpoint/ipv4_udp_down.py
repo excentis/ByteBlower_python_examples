@@ -1,6 +1,7 @@
 #!/usr/bin/python
 """"
-This example allows the user to configure a frameblasting flow which transmits data to the wireless endpoint.
+This example allows the user to configure a frameblasting flow which transmits
+data to the wireless endpoint.
 
 ByteBlowerPort --> WirelessEndpoint
 """
@@ -8,6 +9,7 @@ ByteBlowerPort --> WirelessEndpoint
 from __future__ import print_function
 # We want to use the ByteBlower python API, so import it
 from byteblowerll.byteblower import ByteBlower
+from byteblowerll.byteblower import DeviceStatus
 
 # We will use scapy to build the frames, scapy will be imported when needed.
 
@@ -28,15 +30,17 @@ configuration = {
     # if static, use ["ipaddress", "netmask", "gateway"]
     # 'port_ip_address': ['172.16.0.4', '255.255.252.0', '172.16.0.1'],
 
-    # Address (IP or FQDN) of the ByteBlower Meetingpoint to use.  The wireless endpoint *must* be registered
-    # on this meetingpoint.
-    # Special value: None.  When the address is set to None, the server_address will be used.
+    # Address (IP or FQDN) of the ByteBlower MeetingPoint to use.
+    # The wireless endpoint *must* be registered on this meeting point.
+    # Special value: None.  When the address is set to None,
+    #   the server_address will be used.
     'meetingpoint_address': None,
 
-    # UUID of the ByteBlower WirelessEndpoint to use.  This wireless endpoint *must* be registered to the meetingpoint
+    # UUID of the ByteBlower WirelessEndpoint to use.
+    # This wireless endpoint *must* be registered to the meeting point
     # configured by meetingpoint_address.
-    # Special value: None.  When the UUID is set to None, the example will automatically select the first available
-    # wireless endpoint.
+    # Special value: None.  When the UUID is set to None, the example will
+    # automatically select the first available wireless endpoint.
     # 'wireless_endpoint_uuid': None,
     'wireless_endpoint_uuid': '6d9c2347-e6c1-4eea-932e-053801de32eb',
 
@@ -46,7 +50,8 @@ configuration = {
     # Number of frames to send.
     'number_of_frames': 1000,
 
-    # How fast must the frames be sent.  e.g. every 10 milliseconds (=10000000 nanoseconds)
+    # How fast must the frames be sent.
+    # e.g. every 10 milliseconds (=10000000 nanoseconds)
     'interframe_gap_nanoseconds': 10000000,
 
     'udp_srcport': 4096,
@@ -115,12 +120,14 @@ class Example:
 
         # Get the WirelessEndpoint device
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
-        print("Using wireless endpoint", self.wireless_endpoint.DescriptionGet())
+        print("Using wireless endpoint",
+              self.wireless_endpoint.DescriptionGet())
 
         # Now we have the correct information to start configuring the flow.
 
         # The ByteBlower port will transmit frames to the wireless endpoint,
-        # This means we need to create a 'stream' on the ByteBlower port and a Trigger on the WirelessEndpoint
+        # This means we need to create a 'stream' on the ByteBlower port and
+        # a Trigger on the WirelessEndpoint
 
         stream = self.port.TxStreamAdd()
         stream.InterFrameGapSet(self.interframe_gap_nanoseconds)
@@ -128,12 +135,14 @@ class Example:
 
         # a stream needs to send some data, so lets create a frame
         # For the frame, we need:
-        # - The source MAC address (MAC address of the ByteBlower port in our case)
-        # - The destination MAC address.  This can be the MAC address of the WirelessEndpoint, a router, ...
-        #   We need to resolve this
+        # - The source MAC address
+        #   (the MAC address of the ByteBlower port in our case)
+        # - The destination MAC address.  This can be the MAC address of the
+        #   WirelessEndpoint, a router, ... This will be resolved later on.
         # - The source IP address (The IP address of the ByteBlower port)
         # - The destination IP address (The IP address of the WirelessEndpoint)
-        # - The source and destination UDP ports (we configured this on top of this script)
+        # - The source and destination UDP ports (we configured this on top
+        #   of this script)
         # - a payload to transmit.
 
         network_info = self.wireless_endpoint.DeviceInfoGet().NetworkInfoGet()
@@ -142,21 +151,24 @@ class Example:
         port_mac = self.port.Layer2EthIIGet().MacGet()
         port_layer3_config = self.port.Layer3IPv4Get()
         port_ipv4 = port_layer3_config.IpGet()
-        # destination MAC must be resolved, since we do not know whether the WE is available on the local LAN
+        # destination MAC must be resolved,
+        # since we do not know whether the WE is available on the local LAN
         destination_mac = port_layer3_config.Resolve(wireless_endpoint_ipv4)
 
         payload = 'a' * (self.frame_size - 42)
 
         from scapy.layers.inet import UDP, IP, Ether
         from scapy.all import Raw
-        scapy_udp_payload = Raw(payload.encode('ascii', 'strict'))
-        scapy_udp_header = UDP(dport=self.udp_dstport, sport=self.udp_srcport)
-        scapy_ip_header = IP(src=port_ipv4, dst=wireless_endpoint_ipv4)
-        scapy_frame = Ether(src=port_mac, dst=destination_mac) / scapy_ip_header / scapy_udp_header / scapy_udp_payload
+        udp_payload = Raw(payload.encode('ascii', 'strict'))
+        udp_header = UDP(dport=self.udp_dstport, sport=self.udp_srcport)
+        ip_header = IP(src=port_ipv4, dst=wireless_endpoint_ipv4)
+        eth_header = Ether(src=port_mac, dst=destination_mac)
+        scapy_frame = eth_header / ip_header / udp_header / udp_payload
 
         frame_content = bytearray(bytes(scapy_frame))
 
-        # The ByteBlower API expects an 'str' as input for the Frame::BytesSet(), we need to convert the bytearray
+        # The ByteBlower API expects an 'str' as input for the
+        # frame.BytesSet() method, we need to convert the bytearray
         hexbytes = ''.join((format(b, "02x") for b in frame_content))
 
         frame = stream.FrameAdd()
@@ -167,12 +179,15 @@ class Example:
         # - the source UDP port
         # - the destination UDP port
         # - the originating IP address
-        # - the duration of the session.  This can be calculated from the stream settings
-        #   interframegap (nanoseconds/frame) * number of frames (frames) + some fixed rollout
+        # - the duration of the session.  This can be calculated from the
+        #   stream settings as
+        #   interframegap (nanoseconds/frame) * number of frames (frames)
+        #   some fixed rollout can be added too
         trigger = self.wireless_endpoint.RxTriggerBasicAdd()
 
         # Add 2 seconds of rollout, so frames in transit can be counted too
-        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames + 2000000000
+        duration_ns = self.interframe_gap_nanoseconds * self.number_of_frames
+        duration_ns += 2000000000
 
         trigger.DurationSet(duration_ns)
         trigger.FilterUdpSourcePortSet(self.udp_srcport)
@@ -245,14 +260,13 @@ class Example:
     def select_wireless_endpoint_uuid(self):
         """
         Walk over all known devices on the meetingpoint.
-        If the device has the status 'Available', return its UUID, otherwise return None
+        If the device has the status 'Available', return its UUID,
+        otherwise return None
         :return: a string representing the UUID or None
         """
-        from byteblowerll.byteblower import DeviceStatus_Available
-
         for device in self.meetingpoint.DeviceListGet():
             # is the status Available?
-            if device.StatusGet() == DeviceStatus_Available:
+            if device.StatusGet() == DeviceStatus.Available:
                 # yes, return the UUID
                 return device.DeviceIdentifierGet()
 

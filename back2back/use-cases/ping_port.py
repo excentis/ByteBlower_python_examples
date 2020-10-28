@@ -1,19 +1,16 @@
 """
-    This example shows how to ping a modem connected
-    to the ByteBlower switch.
+    This example shows how to ping a modem connected to the ByteBlower switch.
 
-    For educational reasons this example is kept fairly
-    brief. 
+    For educational reasons this example is kept fairly brief.
       * The source port is configured through DHCP.
       * We ping to a fixed IP address. 
       * The results are printed to stdout.
 
-    All available options on how to configure an IP
-    address to a Byteblower port is found elsewhere.
+    All available options on how to configure an IP address to a
+    Byteblower port is found elsewhere.
 
-    Also good remember, a ByteBlower will also respond
-    to Ping messages. It does this as soons as the 
-    IPV4 layer is configured.
+    Also good to remember, a ByteBlower will also respond to ICMP ping
+    messages. It does this as soon as the IPv4 layer is configured.
 
 """
 import time
@@ -34,14 +31,10 @@ def create_port(server, bb_interface):
     return port
 
 
-def do_ping(server_address, bb_interface, target_address):
+def do_ping(port, target_address):
     """
-        Peforms 5 pings and prints them to stdout.
+        Performs 5 pings and prints them to stdout.
     """
-    api = bb.ByteBlower.InstanceGet()
-    server = api.ServerAdd(server_address)
-    port = create_port(server, bb_interface)
-
     l3 = port.Layer3IPv4Get()
     my_ip = l3.IpGet()
 
@@ -58,7 +51,18 @@ def do_ping(server_address, bb_interface, target_address):
         print(ping_session.SessionInfoGet().DescriptionGet())
         print('')
 
-    api.ServerRemove(server)
+
+def main(server_address, bb_interface, target_address):
+    api = bb.ByteBlower.InstanceGet()
+    server = None
+    try:
+        server = api.ServerAdd(server_address)
+        port = create_port(server, bb_interface)
+        do_ping(port, target_address)
+
+    finally:
+        if server is not None:
+            api.ServerRemove(server)
 
 
 if __name__ == '__main__':
@@ -68,8 +72,5 @@ if __name__ == '__main__':
         print(' but got: ' + ', '.join(sys.argv[1:]))
         sys.exit(-1)
 
-    server_address = sys.argv[1]
-    bb_interface = sys.argv[2]
-    target_address = sys.argv[3]
-
-    do_ping(server_address, bb_interface, target_address)
+    main(server_address=sys.argv[1], bb_interface=sys.argv[2],
+         target_address=sys.argv[3])

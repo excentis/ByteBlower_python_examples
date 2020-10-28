@@ -211,6 +211,7 @@ class Example:
             self.port_1 = None
         if self.port_2:
             self.server.PortDestroy(self.port_2)
+            self.port_2 = None
 
         # Disconnect from the ByteBlower server
         if self.server:

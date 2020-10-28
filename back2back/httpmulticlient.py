@@ -1,6 +1,6 @@
 """
-Basic IPv4 Example for the ByteBlower Python API.
-All examples are garanteed to work with Python 2.7 and above
+HTTP MultiServer/MultiClient for the ByteBlower Python API.
+All examples are guaranteed to work with Python 2.7 and above
 
 Copyright 2018, Excentis N.V.
 """
@@ -17,7 +17,8 @@ configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
     'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
 
-    # Configuration for the first ByteBlower port.  Will be used as HTTP server.
+    # Configuration for the first ByteBlower port.
+    # Will be used as HTTP server.
     'port_1_config': {
         'interface': 'trunk-1-13',
         'mac': '00:bb:01:00:00:01',
@@ -34,12 +35,14 @@ configuration = {
         # if staticv6, use ["ipaddress", prefixlength]
         # 'ip': ['3000:3128::24', '64'],
 
-        # TCP port number to be used by the HTTP connection.  On the HTTP server,
-        # this will be the port on which the server listens.
+        # TCP port number to be used by the HTTP connection.
+        # On the HTTP server, this will be the port on which the server
+        # listens.
         'tcp_port': 4096
     },
 
-    # Configuration for the second ByteBlower port.  Will be used as HTTP client.
+    # Configuration for the second ByteBlower port.
+    # Will be used as HTTP client.
     'port_2_config': {
         'interface': 'trunk-1-25',
         'mac': '00:bb:01:00:00:02',
@@ -56,7 +59,8 @@ configuration = {
         # if staticv6, use ["ipaddress", prefixlength]
         # 'ip': ['3000:3128::24', '64'],
 
-        # TCP port range the HTTP Clients will use to connect with the HTTP server
+        # TCP port range the HTTP Clients will use to connect with
+        # the HTTP server
         'tcp_port_min': 32000,
         'tcp_port_max': 50000
     },
@@ -70,7 +74,8 @@ configuration = {
     # 'http_method': 'PUT',
 
     # total duration, in nanoseconds.
-    # This is the duration of the flow.  When this duration expires, all sessions will be stopped.
+    # This is the duration of the flow.  When this duration expires,
+    # all sessions will be stopped.
     'duration': 10000000000,
 
     # session duration, in nanoseconds
@@ -107,7 +112,8 @@ class Example:
         # enumeration used by the API
         from byteblowerll.byteblower import ParseHTTPRequestMethodFromString
 
-        self.http_method = ParseHTTPRequestMethodFromString(kwargs['http_method'])
+        http_method_arg = kwargs['http_method']
+        self.http_method = ParseHTTPRequestMethodFromString(http_method_arg)
         self.duration = kwargs['duration']
         self.session_duration = kwargs['session_duration']
         self.session_size = kwargs['session_size']
@@ -119,10 +125,25 @@ class Example:
         self.port_1 = None
         self.port_2 = None
 
+    def cleanup(self):
+        """Clean up the created objects"""
+        byteblower_instance = byteblower.ByteBlower.InstanceGet()
+        if self.port_1:
+            self.server.PortDestroy(self.port_1)
+            self.port_1 = None
+
+        if self.port_2:
+            self.server.PortDestroy(self.port_2)
+            self.port_2 = None
+
+        if self.server is not None:
+            byteblower_instance.ServerRemove(self.server)
+            self.server = None
+
     def run(self):
         byteblower_instance = byteblower.ByteBlower.InstanceGet()
 
-        print("Connecting to ByteBlower server {}...".format(self.server_address))
+        print("Connecting to ByteBlower server %s..." % self.server_address)
         self.server = byteblower_instance.ServerAdd(self.server_address)
 
         # Create the port which will be the HTTP server (port_1)
@@ -155,8 +176,10 @@ class Example:
                                       self.port_2_config['tcp_port_max'])
 
         # Configure the direction.
-        # If the HTTP Method is GET, traffic will flow from the HTTP server to the HTTP client
-        # If the HTTP Method is PUT, traffic will flow from the HTTP client to the HTTP server
+        # If the HTTP Method is GET,
+        #   traffic will flow from the HTTP server to the HTTP client
+        # If the HTTP Method is PUT,
+        #   traffic will flow from the HTTP client to the HTTP server
         http_client.HttpMethodSet(self.http_method)
 
         print("Server port:", self.port_1.DescriptionGet())
@@ -176,7 +199,8 @@ class Example:
 
         # - individual duration, can be size-based or time-based
         if self.session_duration is not None:
-            # let the HTTP Client request a page of a specific duration to download...
+            # let the HTTP Client request a page of a specific duration
+            # to download...
             http_client.SessionDurationSet(self.session_duration)
         elif self.session_size is not None:
             # let the HTTP Client request a page of a specific size...
@@ -188,9 +212,6 @@ class Example:
         http_client.Start()
 
         http_client_result = http_client.ResultGet()
-
-        from byteblowerll.byteblower import HTTPMultiResultSnapshot
-        assert isinstance(http_client_result, HTTPMultiResultSnapshot)
 
         for iteration in range(10):
             time.sleep(1)
@@ -226,8 +247,6 @@ class Example:
         print("Status             : {}".format(request_status_string))
         print("Client Result data : {}".format(http_client_result.DescriptionGet()))
         print("Server Result data : {}".format(http_server_result.DescriptionGet()))
-
-        byteblower_instance.ServerRemove(self.server)
 
         return [
             self.duration,
@@ -291,4 +310,8 @@ class Example:
 # called.  This approach makes it possible to include it in a series of
 # examples.
 if __name__ == "__main__":
-    Example(**configuration).run()
+    example = Example(**configuration)
+    try:
+        example.run()
+    finally:
+        example.cleanup()

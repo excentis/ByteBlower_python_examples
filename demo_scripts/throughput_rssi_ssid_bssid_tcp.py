@@ -8,7 +8,8 @@ import time
 import random
 import datetime
 
-from byteblowerll.byteblower import ByteBlower, DeviceStatus_Reserved, ConfigError
+from byteblowerll.byteblower import ByteBlower, DeviceStatus, ConfigError
+from byteblowerll.byteblower import NetworkInterfaceType
 
 from highcharts import Highchart
 import os
@@ -222,7 +223,7 @@ class Example:
         # 'DeviceStatus_Reserved', since we have a Lock on the device.
         status = self.wireless_endpoint.StatusGet()
         start_moment = datetime.datetime.now()
-        while status != DeviceStatus_Reserved:
+        while status != DeviceStatus.Reserved:
             time.sleep(1)
             status = self.wireless_endpoint.StatusGet()
             now = datetime.datetime.now()
@@ -257,7 +258,8 @@ class Example:
         # { 'timestamp': ... , 'SSID': ... , 'BSSID': ... , 'throughput': ...
         results = []
 
-        for network_info_interval in network_info_history.IntervalGet():
+        interval_snapshots = network_info_history.IntervalGet()
+        for network_info_interval in interval_snapshots:
             # Find the corresponding HTTP snapshot
             timestamp = network_info_interval.TimestampGet()
             try:
@@ -270,7 +272,7 @@ class Example:
 
             except ConfigError as e:
                 print("Couldn't fetch Throughput snapshot for timestamp", timestamp)
-                print("Number of NetworkInfo snapshots:", network_info_history.IntervalLengthGet())
+                print("Number of NetworkInfo snapshots:", len(interval_snapshots))
                 print("Number of HTTP snapshots:", http_hist.IntervalLengthGet())
                 print("ConfigError:", e.what())
 
@@ -319,10 +321,8 @@ class Example:
     def find_wifi_interface(self, interface_list):
         """"Looks for the wireless interface
         If wireless_interface is defined and not set to None, find this
-        interface
-        If it is not found, look for the first interface with type
-        NetworkInterfaceType_Wifi.
-        Else, return None
+        interface. If it is not found, look for the first interface with type
+        NetworkInterfaceType_Wifi.  Otherwise, return None
 
         :param interface_list: List of interfaces to query
         :type interface_list: `byteblowerll.byteblower.NetworkInterfaceList`
@@ -330,12 +330,8 @@ class Example:
         :rtype: :class:`byteblowerll.byteblower.NetworkInterface`
         """
 
-        from byteblowerll.byteblower import (NetworkInterface,
-                                             NetworkInterfaceType_WiFi)
-
         if self.wireless_interface is not None:
             for interface in interface_list:
-                assert isinstance(interface, NetworkInterface)
                 if (interface.DisplayNameGet() == self.wireless_interface
                         or interface.NameGet() == self.wireless_interface):
                     return interface
@@ -345,7 +341,7 @@ class Example:
         # just selecting the first interface with an SSID.
 
         for interface in interface_list:
-            if (interface.TypeGet() == NetworkInterfaceType_WiFi
+            if (interface.TypeGet() == NetworkInterfaceType.WiFi
                     and interface.WiFiSsidGet() != ''):
                 return interface
 
@@ -411,57 +407,6 @@ def write_csv(result_list, filename, first_key, separator=';'):
 
             # Write the result
             f.write(separator.join(items) + "\n")
-
-
-def plot_using_matplotlib(device_name, data):
-    """
-    Plots the data collected by the example using matplotlib
-    :param device_name: Name of the device
-    :param data: The data returned by the example
-    """
-
-    timestamps = []
-    rssis = []
-    throughputs = []
-
-    # Reformat the example data for use in the graphics
-    for item in data:
-        timestamps.append(item['timestamp'] / 1000000000)
-        throughputs.append(item['throughput'] / 1000000.0)
-        rssis.append(item['RSSI'])
-
-    # Reformat the timestamps so we have timestamps since the start of
-    # the example
-    min_ts = min(timestamps)
-    x_labels = [x - min_ts for x in timestamps]
-
-    # Do the magic, start with importing matplotlib
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-
-    # Get the default figure and axis
-    fig, ax1 = plt.subplots()
-
-    # Set the title of the graph
-    ax1.set_title(device_name + " Throughput vs RSSI over time")
-
-    # Plot the throughput on the default axis, in the color red
-    ax1.plot(x_labels, throughputs, 'r')
-    ax1.set_ylabel('Throughput (Mbps)', color="red")
-    ax1.set_xlabel('Time')
-
-    # Add another Y axis, which uses the same X axis
-    ax2 = ax1.twinx()
-
-    # Plot the RSSI on the new axis, color is blue
-    ax2.plot(x_labels, rssis, 'b')
-    ax2.set_ylabel('RSSI (dBm)', color="blue")
-
-    # Crop the image
-    fig.tight_layout()
-    # Save the image
-    fig.savefig(os.path.basename(__file__) + ".png")
 
 
 if __name__ == '__main__':
