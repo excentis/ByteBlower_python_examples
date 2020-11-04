@@ -37,6 +37,7 @@ We recommend using the NetworkInfoMonitor when you want to collect results:
 
 from __future__ import print_function
 
+import logging
 import time
 from datetime import timedelta
 
@@ -71,14 +72,17 @@ configuration = {
 
 
 class Example:
+    ten_seconds = timedelta(seconds=10)
+    default_duration = ten_seconds
+    default_interval_duration = ten_seconds
+
     def __init__(self, **kwargs):
-        ten_seconds = timedelta(seconds=10)
         self.meetingpoint_address = kwargs.pop('meetingpoint_address')
 
         self.wireless_endpoint_uuid = kwargs.pop('wireless_endpoint_uuid', None)
         self.wireless_interface = kwargs['wireless_interface']
-        self.duration = kwargs.pop('duration', ten_seconds)
-        self.interval_duration = kwargs.pop('interval_duration', ten_seconds)
+        self.duration = kwargs.pop('duration', self.default_duration)
+        self.interval_duration = kwargs.pop('interval_duration', self.default_interval_duration)
 
         self.meetingpoint = None
         self.wireless_endpoint = None
@@ -97,7 +101,7 @@ class Example:
         # Get the WirelessEndpoint device
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
         device_info = self.wireless_endpoint.DeviceInfoGet()
-        print("Using wireless endpoint", device_info.GivenNameGet())
+        logging.info("Using wireless endpoint %s", device_info.GivenNameGet())
 
         # The network monitor is part of scenario.
         self.wireless_endpoint.Lock(True)
@@ -117,31 +121,31 @@ class Example:
         monitor_history.SamplingIntervalDurationSet(interval_duration_ns)
 
         # Start the test-run.
-        print("Starting the wireless endpoint")
+        logging.info("Starting the wireless endpoint")
         self.wireless_endpoint.Prepare()
         start_time = self.wireless_endpoint.Start()
 
         # Wait for the device to start
-        print('Waiting for the wireless endpoint to start')
+        logging.info('Waiting for the wireless endpoint to start')
         current_time = self.meetingpoint.TimestampGet()
         time_to_sleep = (start_time - current_time) / 1000000000
         time.sleep(int(time_to_sleep))
 
         # Wait for the test to finish
-        print('Waiting for the wireless endpoint to finish the test')
+        logging.info('Waiting for the wireless endpoint to finish the test')
         time.sleep(self.duration.total_seconds())
 
         # Wait for the device to start beating again.
         # Default heartbeat interval is 1 seconds, so lets wait for 2 beats
-        print('Waiting for the wireless endpoint to be communicating '
-              'with the server')
+        logging.info('Waiting for the wireless endpoint to be communicating '
+                     'with the server')
         time.sleep(2)
 
         # Get the results on the wireless endpoint
-        print('Fetching the results')
+        logging.info('Fetching the results')
         self.wireless_endpoint.ResultGet()
 
-        print('Parsing the results')
+        logging.info('Parsing the results')
         monitor_history.Refresh()
 
         # Collect the results from the NetworkInfoMonitor
@@ -153,7 +157,7 @@ class Example:
             'RSSI (dBm)',
             'Tx Rate (bps)"'
         )
-        print(" ".join(headers))
+        logging.info(" ".join(headers))
         # Looping over the collected results.
         for sample in monitor_history.IntervalGet():
 
@@ -168,15 +172,15 @@ class Example:
                 # The results for this interface at this moment.
                 is_connected_to_wifi = network_interface.WiFiSsidGet() != ""
                 if is_connected_to_wifi:
-                    print(
-                        timestamp,
-                        network_interface.DisplayNameGet(),
-                        network_interface.WiFiSsidGet(),
-                        network_interface.WiFiBssidGet(),
-                        network_interface.WiFiChannelGet(),
-                        network_interface.WiFiRssiGet(),
-                        network_interface.WiFiTxRateGet()
-                    )
+                    logging.info("%d %s %s %s %d %d %d",
+                                 timestamp,
+                                 network_interface.DisplayNameGet(),
+                                 network_interface.WiFiSsidGet(),
+                                 network_interface.WiFiBssidGet(),
+                                 network_interface.WiFiChannelGet(),
+                                 network_interface.WiFiRssiGet(),
+                                 network_interface.WiFiTxRateGet()
+                                 )
 
         return self.collect_results(monitor_history)
 
@@ -225,6 +229,7 @@ class Example:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     example = Example(**configuration)
 
     try:

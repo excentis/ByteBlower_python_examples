@@ -4,19 +4,15 @@
 """
 
 from __future__ import print_function
-import time
-import random
+
 import datetime
+import os
+import random
+import sys
+import time
 
 from byteblowerll.byteblower import ByteBlower, DeviceStatus, ConfigError
 from byteblowerll.byteblower import NetworkInterfaceType
-
-from highcharts import Highchart
-import os
-import sys
-import csv
-import datetime
-from time import mktime
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -46,7 +42,7 @@ configuration = {
     # Special value: None.  When the UUID is set to None, the example will
     #                       automatically select the first available wireless
     #                       endpoint.
-    #'wireless_endpoint_uuid': None,
+    # 'wireless_endpoint_uuid': None,
     'wireless_endpoint_uuid': 'eda84fd1f0761a6d',
 
     # Name of the WiFi interface to query.
@@ -67,7 +63,7 @@ configuration = {
     #        webserver
     # 'http_method': 'GET',
     'http_method': 'PUT',
-    
+
     # duration, in nanoseconds
     # Duration of the session
     #           sec  milli  micro  nano
