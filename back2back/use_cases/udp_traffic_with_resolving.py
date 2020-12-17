@@ -120,7 +120,7 @@ class NATResolver:
 
             # Send a single Probing frame.
             bb_frame.BytesSet(hexbytes)
-            stream.NumberOfFramesSet(5)
+            stream.NumberOfFramesSet(10)
             stream.InterFrameGapSet(1000 * 1000)  # 1 millisecond in nanos.
 
             cap = wan_port.RxCaptureBasicAdd()
@@ -142,10 +142,10 @@ class NATResolver:
                 sniffed = cap.ResultGet()
                 sniffed.Refresh()
 
-                if sniffed.PacketCountGet() > 0:
+                if sniffed.PacketCountGet() > 2:
                     break
 
-                time.sleep(0.01)
+                time.sleep(0.1)
 
             # The Capture needs to stopped explicitly.
             cap.Stop()
