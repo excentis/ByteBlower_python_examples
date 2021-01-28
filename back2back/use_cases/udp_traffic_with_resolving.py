@@ -44,11 +44,13 @@ class Device:
 
         self.vlans = vlans
 
+        self.iptype = kwargs.pop('iptype', 4)
         self.ip = kwargs.pop('ip', None)
         self.netmask = kwargs.pop('netmask', None)
         self.gateway = kwargs.pop('gateway', None)
 
         self.dhcp = kwargs.pop('dhcp', False)
+        self.slaac = kwargs.pop('slaac', False)
         self.nat = kwargs.pop('nat', False)
 
         self._bb_port = None
@@ -71,17 +73,36 @@ class Device:
             l2_5 = self.bbport.Layer25VlanAdd()
             l2_5.IDSet(vlan_id)
 
-        l3 = self.bbport.Layer3IPv4Set()
-        if self.dhcp:
-            dhcp = l3.ProtocolDhcpGet()
-            dhcp.Perform()
-            self.ip = l3.IpGet()
-            self.gateway = l3.GatewayGet()
-            self.netmask = l3.NetmaskGet()
+        if self.iptype == 4:
+            l3 = self.bbport.Layer3IPv4Set()
+            if self.dhcp:
+                dhcp = l3.ProtocolDhcpGet()
+                dhcp.Perform()
+                self.ip = l3.IpGet()
+                self.gateway = l3.GatewayGet()
+                self.netmask = l3.NetmaskGet()
+            else:
+                l3.IpSet(self.ip)
+                l3.NetmaskSet(self.netmask)
+                l3.GatewaySet(self.gateway)
+
+        elif self.iptype == 6:
+            l3 = self.bbport.Layer3IPv6Set()
+            if self.dhcp:
+                dhcp = l3.ProtocolDhcpGet()
+                dhcp.Perform()
+                self.ip = l3.IpDhcpGet()[0].split('/')[0]
+                self.gateway = l3.GatewayGet()
+            elif self.slaac:
+                l3.StatelessAutoconfiguration()
+                self.ip = l3.IpStatelessGet()[0].split('/')[0]
+                self.gateway = l3.GatewayGet()
+            else:
+                l3.IpManualSet(self.ip)
+                l3.GatewaySet(self.gateway)
+
         else:
-            l3.IpSet(self.ip)
-            l3.NetmaskSet(self.netmask)
-            l3.GatewaySet(self.gateway)
+            raise ValueError("iptype must be 4 or 6")
 
         logging.info('Created port: %s' % self.bbport.DescriptionGet())
 
@@ -91,19 +112,23 @@ class NATResolver:
     def resolve(cls, wan_device, private_device, udp_src_port, udp_dst_port):
 
         from scapy.layers.inet import UDP, IP, Ether
+        from scapy.layers.inet6 import  IPv6
         from scapy.all import Dot1Q
 
         wan_port = wan_device.bbport
-        wan_ip = wan_port.Layer3IPv4Get().IpGet()
 
         private_port = private_device.bbport
-        private_ip = private_port.Layer3IPv4Get().IpGet()
+        private_l3 = private_port.Layer3IPv4Get()
+        if private_device.iptype == 6:
+            private_l3 = private_port.Layer3IPv6Get()
+
+        private_ip = private_device.ip
         private_mac = private_port.Layer2EthIIGet().MacGet()
 
         cap = None
         stream = None
         try:
-            resolved_mac = private_port.Layer3IPv4Get().Resolve(wan_ip)
+            resolved_mac = private_l3.Resolve(wan_device.ip)
 
             stream = private_port.TxStreamAdd()
             bb_frame = stream.FrameAdd()
@@ -111,7 +136,11 @@ class NATResolver:
             for vlan_id in private_device.vlans:
                 scapy_frame /= Dot1Q(vlan=vlan_id)
 
-            scapy_frame /= IP(src=private_ip, dst=wan_ip)
+            if private_device.iptype == 4:
+                scapy_frame /= IP(src=private_ip, dst=wan_device.ip)
+            else:
+                scapy_frame /= IPv6(src=private_ip, dst=wan_device.ip)
+
             scapy_frame /= UDP(dport=udp_dst_port, sport=udp_src_port)
             scapy_frame /= 'Excentis NAT Discovery packet'
 
@@ -129,7 +158,10 @@ class NATResolver:
                 filter_elements.append("vlan %d" % vlan)
 
             # normal filter:
-            filter_elements.append("ip dst %s" % wan_ip)
+            if wan_device.iptype == 4:
+                filter_elements.append("ip dst %s" % wan_device.ip)
+            else:
+                filter_elements.append("ip6 dst %s" % wan_device.ip)
             filter_elements.append("udp port %d" % udp_dst_port)
             bpf_filter = ' and '.join(filter_elements)
             cap.FilterSet(bpf_filter)
@@ -158,6 +190,12 @@ class NATResolver:
                     discovered_ip = raw['IP'].getfieldval('src')
                     discovered_udp_port = raw['UDP'].getfieldval('sport')
                     return discovered_ip, discovered_udp_port
+
+                if IPv6 in raw and UDP in raw:
+                    discovered_ip = raw['IPv6'].getfieldval('src')
+                    discovered_udp_port = raw['UDP'].getfieldval('sport')
+                    return discovered_ip, discovered_udp_port
+
             raise RuntimeError("NAT detection frames didn't get through")
         finally:
             if stream is not None:
@@ -192,6 +230,12 @@ class UdpTrafficProfile(object):
         :type duration: datetime.timedelta
         :rtype: UdpFlow
         """
+
+        if source.iptype != destination.iptype:
+            raise RuntimeError("Source and destination devices do not have the"
+                               "same IP configuration!"
+                               "IPv4 vs IPv6")
+
         if number_of_frames is None:
             duration_s = duration.total_seconds()
             number_of_frames = int(math.ceil(duration_s * 1e9 / self.interframegap_ns))
@@ -204,10 +248,14 @@ class UdpTrafficProfile(object):
         src_ip = source.ip
         src_mac = source.bbport.Layer2EthIIGet().MacGet()
 
+        source_l3 = source.bbport.Layer3IPv4Get()
+        if source.iptype == 6:
+            source_l3 = source.bbport.Layer3IPv6Get()
+
         dst_ip = destination.ip
 
         logging.info("Resolving destination MAC for %s", dst_ip)
-        dst_mac = source.bbport.Layer3IPv4Get().Resolve(dst_ip)
+        dst_mac = source_l3.Resolve(dst_ip)
 
         frame_dst_ip = destination.ip
         frame_dst_port = udp_dest
@@ -231,7 +279,7 @@ class UdpTrafficProfile(object):
             )
 
             logging.info("Resolving destination MAC for %s", frame_dst_ip)
-            dst_mac = source.bbport.Layer3IPv4Get().Resolve(dst_ip)
+            dst_mac = source_l3.Resolve(dst_ip)
 
         stream = source.bbport.TxStreamAdd()
         stream.NumberOfFramesSet(number_of_frames)
@@ -239,9 +287,14 @@ class UdpTrafficProfile(object):
 
         frame = stream.FrameAdd()
 
-        payload = 'a' * (self.frame_size - 42)
+        frame_overhead = 42
+        # IPv6 header is larger than an IPv4 header
+        if source.iptype == 6:
+            frame_overhead = 62
 
-        from scapy.layers.inet import UDP, IP, Ether
+        payload = 'a' * (self.frame_size - frame_overhead)
+
+        from scapy.layers.inet import UDP, Ether
         from scapy.all import Raw, Dot1Q
 
         # A stream will always send the packet just as configured.
@@ -254,7 +307,13 @@ class UdpTrafficProfile(object):
         for vlan_id in source.vlans:
             scapy_frame /= Dot1Q(vlan=vlan_id)
 
-        scapy_frame /= IP(src=src_ip, dst=frame_dst_ip)
+        if source.iptype == 4:
+            from scapy.layers.inet import IP
+            scapy_frame /= IP(src=src_ip, dst=frame_dst_ip)
+        else:
+            from scapy.layers.inet6 import IPv6
+            scapy_frame /= IPv6(src=src_ip, dst=frame_dst_ip)
+
         scapy_frame /= UDP(dport=frame_dst_port, sport=udp_src)
         scapy_frame /= Raw(payload.encode('ascii', 'strict'))
 
@@ -269,7 +328,7 @@ class UdpTrafficProfile(object):
         # for the Vlan layer.
         trigger = destination.bbport.RxTriggerBasicAdd()
 
-        # The BPF filter on a trigger is promiscous: it will be applied to all
+        # The BPF filter on a trigger is promiscuous: it will be applied to all
         # traffic that arrives at the Physical interface.
         #
         # When we expect to receive packets with a VLAN, we need to add
@@ -279,7 +338,11 @@ class UdpTrafficProfile(object):
             filter_elements.append("vlan %d" % vlan)
 
         # normal filter:
-        filter_elements.append("ip dst %s" % filter_dst_ip)
+        if destination.ip == 4:
+            filter_elements.append("ip dst %s" % filter_dst_ip)
+        else:
+            filter_elements.append("ip6 dst %s" % filter_dst_ip)
+
         filter_elements.append("udp port %d" % filter_dst_port)
         bpf_filter = ' and '.join(filter_elements)
         trigger.FilterSet(bpf_filter)
@@ -289,7 +352,6 @@ class UdpTrafficProfile(object):
 
 class UdpFlow(object):
     """Frame blasting UDP Flow.
-
 
     """
 
@@ -515,6 +577,37 @@ def run_example_vlan_nat():
         return results
 
 
+def run_example_udpv6():
+    """Configures an example with the following parameters
+    - The WAN port is on nontrunk-1.
+    - The CPE port is located on trunk-1-13
+    - Traffic to be sent will be UDPv6 traffic of 508 bytes (+ 4 bytes CRC) and
+      will be sent at 1000 packets/s (frame interval is 1ms)
+    - There will be 2 traffic flows from the WAN port to the CPE port
+    - There will be 1 traffic flow from the CPE port to the WAN port
+    - Traffic will be sent for 3 seconds
+    """
+    config = {
+        'server_address': '10.8.254.65',
+        'wan_port': Device(interface='nontrunk-1',
+                           mac='00:ff:1f:00:00:01',
+                           iptype=6, slaac=True),
+        'cpe_port': Device(interface='trunk-1-19',
+                           iptype=6, dhcp=True,
+                           nat=True),
+        'traffic_profile': UdpTrafficProfile(interframegap=1000000,  # ns
+                                             frame_size=508  # bytes
+                                             ),
+        'number_of_downstream_flows': 2,
+        'number_of_upstream_flows': 1,
+        'traffic_duration': datetime.timedelta(seconds=3)
+    }
+
+    with Example(**config) as example:
+        results = example.run()
+        return results
+
+
 def run_example_no_vlan_no_nat():
     """Configures an example with the following parameters
     - The WAN port is on nontrunk-1.  It provisions using DHCP
@@ -529,6 +622,7 @@ def run_example_no_vlan_no_nat():
     config = {
         'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
         'wan_port': Device(interface='nontrunk-1',
+                           vlans=[2],
                            mac='00:ff:1f:00:00:01',
                            dhcp=True),
         'cpe_port': Device(interface='trunk-1-13', dhcp=True),
@@ -550,5 +644,5 @@ if __name__ == '__main__':
     import pprint
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    result = run_example_vlan_nat()
+    result = run_example_udpv6()
     pprint.pprint(result)
