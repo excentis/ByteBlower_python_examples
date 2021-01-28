@@ -338,7 +338,7 @@ class UdpTrafficProfile(object):
             filter_elements.append("vlan %d" % vlan)
 
         # normal filter:
-        if destination.ip == 4:
+        if destination.iptype == 4:
             filter_elements.append("ip dst %s" % filter_dst_ip)
         else:
             filter_elements.append("ip6 dst %s" % filter_dst_ip)
