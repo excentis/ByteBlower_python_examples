@@ -275,7 +275,7 @@ class UdpTrafficProfile(object):
             # destination port is behind a NAT, probably need to 'poke' a hole
             frame_dst_ip, frame_dst_port = NATResolver.resolve(
                 wan_device=source, private_device=destination,
-                udp_src_port=udp_dest, udp_dst_port=udp_dest
+                udp_src_port=udp_src, udp_dst_port=udp_dest
             )
 
             logging.info("Resolving destination MAC for %s", frame_dst_ip)
