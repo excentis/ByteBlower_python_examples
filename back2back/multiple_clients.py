@@ -1,7 +1,9 @@
 """
 This ByteBlower API example shows how to use several HTTPClients together.
 We will show that you can easily use multiple HTTPClients and with the same 
-HTTPServer.
+HTTPServer. 
+
+All HTTP Clients are created on the same ByteBlower port.
 
 This example assumes that you already familiar with 
 the basic ByteBlower API for HTTP/TCP traffic. 
@@ -21,11 +23,11 @@ from byteblowerll.byteblower import ParseHTTPRequestMethodFromString
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
+    'server_address': 'byteblower-tutorial-3100.lab.byteblower.excentis.com',
 
     # Configuration for the first ByteBlower port.  Will be used as HTTP server.
     'server_bb_port': {
-        'interface': 'trunk-1-20',
+        'interface': 'trunk-1-5',
         'mac': '00:bb:01:00:00:01',
         'ip': 'dhcpv4',
 
@@ -34,9 +36,9 @@ configuration = {
     },
 
     # Configuration for the second ByteBlower port. On this ByteBlower port 
-    # we will configure the HTTP clients.
+    # we will configure all the HTTP clients.
     'client_bb_port': {
-        'interface': 'trunk-1-14',
+        'interface': 'trunk-1-4',
         'mac': '00:bb:01:00:00:02',
 
         'ip': 'dhcpv4',
@@ -49,8 +51,8 @@ configuration = {
     #     - the duration, this is one of available stop conditions of a
     #       HTTP Server.
     #
-    # Each client is time based, hence the duration parameter. Just as for the
-    # basic TCP example, this parameter uses nano-seconds as unit.
+    # Each client is time based, hence no the duration parameter is required.
+    # Same as for the basic TCP example, the units are list in nano-seconds.
     'http_clients': [
         {'http_method': 'GET',
          'duration': 5000000000},
