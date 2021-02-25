@@ -29,7 +29,7 @@ configuration = {
 
     # Configuration for the first ByteBlower port.  Will be used as HTTP server.
     'server_bb_port': {
-        'interface': 'trunk-1-5',
+        'interface': 'trunk-1-4',
         'mac': '00:bb:01:00:00:01',
         'ip': 'dhcpv4',
 
@@ -53,28 +53,46 @@ configuration = {
 
             # Configuration for the second ByteBlower port. On this ByteBlower port
             # only the current HTTPClient is used.
-            # This port configuration needs to be added for all HTTPClients.
+            # This configuration needs to be added for all HTTPClients.
             'client_bb_port': {
-                'interface': 'trunk-1-4',
+                'interface': 'trunk-1-5',
                 'mac': '00:bb:01:00:00:02',
                 'ip': 'dhcpv4',
             }
         },
         {
             'http_method': 'PUT',
+            'duration': 6000000000,
+            'client_bb_port': {
+                'interface': 'trunk-1-6',
+                'mac': '00:bb:01:00:00:03',
+                'ip': 'dhcpv4',
+            }
+        },
+        {
+            'http_method': 'GET',
+            'duration': 7000000000,
+            'client_bb_port': {
+                'interface': 'trunk-1-7',
+                'mac': '00:bb:01:00:00:04',
+                'ip': 'dhcpv4',
+            }
+        },
+        {
+            'http_method': 'GET',
             'duration': 15000000000,
             'client_bb_port': {
-                'interface': 'trunk-1-4',
-                'mac': '00:bb:01:00:00:02',
+                'interface': 'trunk-1-8',
+                'mac': '00:bb:01:00:00:05',
                 'ip': 'dhcpv4',
             }
         },
         {
-            'http_method': 'PUT',
-            'duration': 10000000000,
+            'http_method': 'GET',
+            'duration': 20000000000,
             'client_bb_port': {
-                'interface': 'trunk-1-4',
-                'mac': '00:bb:01:00:00:02',
+                'interface': 'trunk-1-9',
+                'mac': '00:bb:01:00:00:06',
                 'ip': 'dhcpv4',
             }
         },
