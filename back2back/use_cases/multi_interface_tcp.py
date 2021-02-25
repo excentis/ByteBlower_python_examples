@@ -92,7 +92,7 @@ configuration = {
             'duration': 20000000000,
             'client_bb_port': {
                # ByteBlower interfaces can be reused.
-               # But it's strongly sugested to provide MAC
+               # But it's strongly sugested to use diffierent MAC
                # addresses for all Interfaces.
                 'interface': 'trunk-1-8',
                 'mac': '00:bb:01:00:00:06',
@@ -132,10 +132,6 @@ class Example:
         # Create the port which will be the HTTP server (port_1)
         print("Creating HTTP Server port")
         self.server_bb_port = self.provision_port(self.server_bb_port_config)
-
-        print("Creating HTTP Client port")
-        # Create the port which will be the HTTP client (port_2)
-
         http_server_ip_address = self.server_bb_port_config['ip_address']
 
         # create a HTTP server
@@ -158,6 +154,8 @@ class Example:
         # Configure each client one-by-one.
         # This part is the same as the basic TCP example.
         for client_config in self.http_client_configs:
+            # The client BB port is created inside the loop
+            # of the HTTP client configs.
             client_bb_port = self.provision_port(client_config['byteblower_port'])
             self.client_bb_ports.append(client_bb_port)
 
@@ -260,8 +258,8 @@ class Example:
         return results
 
     def cleanup(self):
-        for pp in self.client_bb_ports:
-            self.server.PortDestroy(pp)
+        for bb_port in self.client_bb_ports:
+            self.server.PortDestroy(bb_port)
         if self.server_bb_port:
             self.server.PortDestroy(self.server_bb_port)
             self.server_bb_port = None
