@@ -51,9 +51,9 @@ configuration = {
             'http_method': 'GET',
             'duration': 5000000000,
 
-            # Configuration for the second ByteBlower port. On this ByteBlower port
-            # only the current HTTPClient is used.
-            # This configuration needs to be added for all HTTPClients.
+            # Configuration for the ByteBlower port.
+            # Only the current client is used for this ByteBlower port.
+            # This configuration element is required for all HTTPClients.
             'client_bb_port': {
                 'interface': 'trunk-1-5',
                 'mac': '00:bb:01:00:00:02',
@@ -91,7 +91,10 @@ configuration = {
             'http_method': 'GET',
             'duration': 20000000000,
             'client_bb_port': {
-                'interface': 'trunk-1-9',
+               # ByteBlower interfaces can be reused.
+               # But it's strongly sugested to provide MAC
+               # addresses for all Interfaces.
+                'interface': 'trunk-1-8',
                 'mac': '00:bb:01:00:00:06',
                 'ip': 'dhcpv4',
             }
