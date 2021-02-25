@@ -34,7 +34,7 @@ configuration = {
         'ip': 'dhcpv4',
 
         # The TCP Server listens new connections on this Port number.
-        'tcp_listen_port': 4096
+        'tcp_listen_port': 443
     },
 
     # A list of HTTP clients. These will all start on on the client
