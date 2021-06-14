@@ -74,11 +74,11 @@ class Example:
         self.wireless_endpoint_uuid = kwargs.pop('wireless_endpoint_uuid', None)
         self.wireless_endpoint_nat = kwargs.pop('wireless_endpoint_nat', True)
 
-        self.frame_size = kwargs['frame_size']
-        self.number_of_frames = kwargs['number_of_frames']
-        self.interframe_gap_nanoseconds = kwargs['interframe_gap_nanoseconds']
-        self.udp_srcport = kwargs['udp_srcport']
-        self.udp_dstport = kwargs['udp_dstport']
+        self.frame_size = kwargs.pop('frame_size', 252)
+        self.number_of_frames = kwargs.pop('number_of_frames', 2000)
+        self.interframe_gap_nanoseconds = kwargs.pop('interframe_gap_nanoseconds', 10000000)
+        self.udp_srcport = kwargs.pop('udp_srcport', 4096)
+        self.udp_dstport = kwargs.pop('udp_dstport', 4096)
 
         self.server = None
         self.port = None
