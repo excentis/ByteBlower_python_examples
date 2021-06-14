@@ -342,7 +342,7 @@ class Example:
             bb_frame.PayloadSet('aa' * 60)
 
             # Send a single Probing frame.
-            stream.NumberOfFramesSet(1)
+            stream.NumberOfFramesSet(5)
             stream.InterFrameGapSet(1000 * 1000)  # 1 millisecond in nanos.
 
             stream.SourcePortSet(self.udp_dstport)
