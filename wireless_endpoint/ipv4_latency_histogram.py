@@ -57,6 +57,11 @@ configuration = {
 
     'udp_srcport': 4096,
     'udp_dstport': 4096,
+
+    # Latency histogram range in nano seconds.
+    # The ByteBlower default is: 0 to 1 seconds
+    'range_min': 0,
+    'range_max': int(1e9),
 }
 
 
@@ -79,6 +84,9 @@ class Example:
         self.interframe_gap_nanoseconds = kwargs.pop('interframe_gap_nanoseconds', 10000000)
         self.udp_srcport = kwargs.pop('udp_srcport', 4096)
         self.udp_dstport = kwargs.pop('udp_dstport', 4096)
+
+        self.range_min = kwargs.pop('range_min', 0)
+        self.range_max = kwargs.pop('range_max', int(1e9))
 
         self.server = None
         self.port = None
@@ -173,6 +181,8 @@ class Example:
         latency_trigger.FilterUdpDestinationPortSet(self.udp_dstport)
         latency_trigger.FilterSourceAddressSet(port_ipv4)
 
+        latency_trigger.RangeSet(self.range_min, self.range_max)
+
         print("Creating the stream...")
         stream = self.port.TxStreamAdd()
         stream.InterFrameGapSet(self.interframe_gap_nanoseconds)
@@ -262,6 +272,8 @@ class Example:
         latency_result = latency_trigger.ResultGet()
         stream_result.Refresh()
         latency_result.Refresh()
+
+        print(latency_result.DescriptionGet())
 
         tx_frames = stream_result.PacketCountGet()
         rx_frames = latency_result.PacketCountGet()
