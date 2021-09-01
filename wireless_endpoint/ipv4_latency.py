@@ -11,7 +11,7 @@ from byteblowerll.byteblower import ByteBlower, DeviceStatus
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': 'byteblower-tutorial-1300.lab.byteblower.excentis.com',
+    'server_address': 'byteblower-tutorial-3100.lab.byteblower.excentis.com',
 
     # Interface on the server to create a port on.
     'server_interface': 'nontrunk-1',
@@ -36,8 +36,8 @@ configuration = {
     # configured by meetingpoint_address.
     # Special value: None.  When the UUID is set to None, the example will
     # automatically select the first available wireless endpoint.
-    # 'wireless_endpoint_uuid': None,
-    'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
+    # 'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
+    'wireless_endpoint_uuid': None,
 
     # Size of the frame on ethernet level. Do not include the CRC
     'frame_size': 252,
@@ -242,7 +242,7 @@ class Example:
         latency_max = 0
         latency_avg = 0
         jitter = 0
-        if rx_frames != 0:
+        if latency_result.PacketCountValidGet() > 0:
             latency_min = latency_result.LatencyMinimumGet()
             latency_avg = latency_result.LatencyAverageGet()
             latency_max = latency_result.LatencyMaximumGet()
