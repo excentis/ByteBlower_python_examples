@@ -284,7 +284,7 @@ class Example:
         frames_above = 0
         frames_below = 0
         frames_in_range = []
-        if rx_frames != 0:
+        if latency_result.PacketCountValidGet() > 0:
             assert isinstance(latency_result, api.LatencyDistributionResultSnapshot)
             latency_min = latency_result.LatencyMinimumGet()
             latency_avg = latency_result.LatencyAverageGet()
