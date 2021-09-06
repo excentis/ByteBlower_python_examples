@@ -39,9 +39,19 @@ def get_device_info(server_address):
 
         wireless_endpoints = meetingpoint.DeviceListGet()
         for we in wireless_endpoints:
-            fmt = "{NAME}, {UUID}"
+            fmt = "{NAME}, {UUID}, {STATUS}"
+            status="UNKNOWN"
+            device_status = we.StatusGet()
+            if device_status == byteblower.DeviceStatus.Available:
+                status = "Available"
+            elif device_status == byteblower.DeviceStatus.Reserved:
+                status = "Reserved"
+            elif device_status == byteblower.DeviceStatus.Running:
+                status = "Running Scenario"
+
             line = fmt.format(NAME=we.DeviceInfoGet().GivenNameGet(),
-                              UUID=we.DeviceIdentifierGet())
+                              UUID=we.DeviceIdentifierGet(),
+                              STATUS=status)
             output += line + "\n"
 
     except Exception as e:
