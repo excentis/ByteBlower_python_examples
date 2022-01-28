@@ -1,9 +1,11 @@
 """
-Basic IPv4 TCP Example for the ByteBlower Python API.
+Basic IPv4 TCP One Way Latency Example for the ByteBlower Python API.
 All examples are guaranteed to work with Python 2.7 and above
 
-This example show how to use TCP with ByteBlower. This all happens in the
-run method of the Example class.
+This example show how to measure HTTP latency with ByteBlower.
+This all happens in the run method of the Example class.
+
+The main function also prints and plots the collected results.
 
 The ByteBlower port configuration is flexible, you can configure
  * IPv4 (static or DHCP)
