@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link href="https://www.highcharts.com/highslide/highslide.css" rel="stylesheet" />
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script type="text/javascript" src="https://code.highcharts.com/6/highcharts.js"></script>
+        <script type="text/javascript" src="https://code.highcharts.com/6/highcharts-more.js"></script>
+        <script type="text/javascript" src="https://code.highcharts.com/6/modules/heatmap.js"></script>
+        <script type="text/javascript" src="https://code.highcharts.com/6/modules/exporting.js"></script>
+    </head>
+    <body style="margin:0;padding:0">
+                <div id="container" style="width:1000px;height:400px;">Loading....</div>
+
+
+    <script>
+        $(function(){
+
+
+
+
+
+            Highcharts.setOptions({"lang": {}, "global": {}});
+            var option = {"loading": {}, "subtitle": {}, "xAxis": {"type": "linear", "title": {"text": "<span style=\"font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; color: #F7941C; font-size: 12px; line-height: 1.4640625; font-weight: bold;\">Time since start [ms]</span>"}}, "title": {"text": "<span style=\"font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; color: #00AEEF; font-size: 20px; line-height: 1.2640625; \">HTTP Latency over time</span>"}, "series": {}, "labels": {}, "yAxis": [{"title": {"text": "<span style=\"font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; color: #00AEEF; font-size: 12px; line-height: 1.2640625; font-weight: bold; \">Throughput [bps]</span>"}}, {"opposite": "true", "title": {"text": "<span style=\"font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; color: #EC008C; font-size: 12px; line-height: 1.2640625; font-weight: bold; \">Latency [ms]</span>"}}], "chart": {"width": 1000, "zoomType": "x", "renderTo": "container", "height": 400}, "tooltip": {}, "plotOptions": {}, "credits": {"enabled": false}, "colors": {}, "pane": {}, "exporting": {}, "drilldown": {}, "navigation": {}, "legend": {}};
+
+
+ 
+
+            var chart = new Highcharts.Chart(option);
+
+            var data = [{"name": "Throughput", "yAxis": 0, "type": "line", "data": [[0.0, 164.221304], [1000.0, 949.18688], [2000.0, 949.18688], [3000.0, 949.19856], [4000.0, 949.18688], [5000.0, 949.18688], [6000.0, 949.19856], [7000.0, 949.18688], [8000.0, 949.18688], [9000.0, 949.18688], [10000.0, 949.18688], [11000.0, 949.19856], [12000.0, 949.18688], [13000.0, 949.18688], [14000.0, 949.18688], [15000.0, 784.96608], [16000.0, 0.0]]}, {"name": "Jitter", "yAxis": 1, "type": "arearange", "data": [[0.0, 1.07508, 1.3860599999999998], [1000.0, 1.177897, 1.3198489999999998], [2000.0, 1.177928, 1.319874], [3000.0, 1.177841, 1.319801], [4000.0, 1.177933, 1.3198590000000001], [5000.0, 1.177903, 1.319851], [6000.0, 1.17779, 1.319744], [7000.0, 1.177835, 1.319757], [8000.0, 1.1778300000000002, 1.319788], [9000.0, 1.177839, 1.319741], [10000.0, 1.177832, 1.3197640000000002], [11000.0, 1.177802, 1.319742], [12000.0, 1.177832, 1.319782], [13000.0, 1.177782, 1.319724], [14000.0, 1.1778870000000001, 1.319813], [15000.0, 1.177836, 1.319788], [16000.0, 0.0, 0.0]]}, {"name": "Minimum Latency", "yAxis": 1, "type": "line", "data": [[0.0, 0.080047], [1000.0, 1.124127], [2000.0, 1.124347], [3000.0, 1.125053], [4000.0, 1.124286], [5000.0, 1.124969], [6000.0, 1.124094], [7000.0, 1.124888], [8000.0, 1.123963], [9000.0, 1.122985], [10000.0, 1.125531], [11000.0, 1.124646], [12000.0, 1.125352], [13000.0, 1.124128], [14000.0, 1.12549], [15000.0, 1.124429], [16000.0, 0.0]]}, {"name": "Average Latency", "yAxis": 1, "type": "line", "data": [[0.0, 1.23057], [1000.0, 1.248873], [2000.0, 1.248901], [3000.0, 1.248821], [4000.0, 1.248896], [5000.0, 1.248877], [6000.0, 1.248767], [7000.0, 1.248796], [8000.0, 1.248809], [9000.0, 1.24879], [10000.0, 1.248798], [11000.0, 1.248772], [12000.0, 1.248807], [13000.0, 1.248753], [14000.0, 1.24885], [15000.0, 1.248812], [16000.0, 0.0]]}, {"name": "Maximum Latency", "yAxis": 1, "type": "line", "data": [[0.0, 1.393155], [1000.0, 1.380205], [2000.0, 1.381146], [3000.0, 1.380244], [4000.0, 1.381235], [5000.0, 1.379962], [6000.0, 1.380333], [7000.0, 1.381205], [8000.0, 1.380583], [9000.0, 1.380681], [10000.0, 1.381278], [11000.0, 1.379971], [12000.0, 1.379032], [13000.0, 1.380567], [14000.0, 1.380845], [15000.0, 1.380285], [16000.0, 0.0]]}];
+            var dataLen = data.length;
+            for (var ix = 0; ix < dataLen; ix++) {
+                chart.addSeries(data[ix]);
+            }
+ 
+
+
+
+
+
+
+
+        
+    });
+        </script>
+
+    </body>
+</html>

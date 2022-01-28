@@ -78,7 +78,6 @@ configuration = {
         'tcp_port': 4096
     },
 
-    # HTTP Method
     # HTTP Method can be GET or PUT
     # - GET: Standard HTTP download, we retrieve data from the web server
     # - PUT: Standard HTTP upload, the wireless endpoint will push data to the
@@ -89,7 +88,7 @@ configuration = {
     # duration, in nanoseconds
     # Duration of the session.  If None is given, the request_size will be used
     # 'duration': None,
-    'duration': 5000000000,
+    'duration': 15000000000,
 
     # The maximum duration in nanoseconds the session can take.
     # If it takes longer, the example will stop the session.
@@ -380,16 +379,143 @@ class Example:
         return port
 
 
-# When this python module is called stand-alone, the run-function must be
-# called.  This approach makes it possible to include it in a series of
-# examples.
-if __name__ == "__main__":
+def print_results(results):
+    print("The test collected the following interval results:")
+    interval_results = results.get('interval_results', [])
+    interval_results.sort(key=lambda x: x.get('timestamp_nanoseconds', 0))
+
+    first_snapshot = interval_results[0] if interval_results else {}
+    first_timestamp = first_snapshot.get('timestamp_nanoseconds', 0)
+    for snapshot in interval_results:
+        timestamp = snapshot.get('timestamp_nanoseconds')
+        seconds_since_start = (timestamp - first_timestamp) / 1e9
+
+        print("%3ds: %0.2f Mbit/s, measured latency (min,avg,max,jitter): "
+              "%.03fms, %.03fms, %.03fms, %.03fms" % (
+                  seconds_since_start,
+                  snapshot.get('rx_throughput_bits_per_seconds', 0) / 1e6,
+                  snapshot.get('rx_min_latency_nanoseconds', 0) / 1e6,
+                  snapshot.get('rx_avg_latency_nanoseconds', 0) / 1e6,
+                  snapshot.get('rx_max_latency_nanoseconds', 0) / 1e6,
+                  snapshot.get('rx_jitter_nanoseconds', 0) / 1e6,
+              ))
+
+    print("Total bytes transmitted: %d" % results.get('tx_data_bytes', 0))
+    print("Total bytes received:    %d" % results.get('rx_data_bytes', 0))
+    print("Total average throughput %.02f Mbit/s" % (
+            results.get('rx_throughput_bits_per_second', 0) / 1e6
+    ))
+    print("Total latency (min, avg, max, jitter) "
+          "%.03fms, %.03fms, %.03fms, %.03fms" % (
+              results.get('rx_min_latency_nanoseconds', 0) / 1e6,
+              results.get('rx_avg_latency_nanoseconds', 0) / 1e6,
+              results.get('rx_max_latency_nanoseconds', 0) / 1e6,
+              results.get('rx_jitter_nanoseconds', 0) / 1e6,
+          ))
+
+
+def plot_highcharts(results):
+    import os.path
+    try:
+        from highcharts import Highchart
+    except ImportError:
+        print("Highcharts not available, not plotting the results")
+        return
+
     from pprint import pprint
+    print("Raw data:")
+    pprint(results)
+
+    chart = Highchart(width=1000, height=400)
+    styling = '<span style="font-family: \'DejaVu Sans\', Arial, Helvetica, sans-serif; color: '
+    options = {
+        'title': {
+            'text': styling + '#00AEEF; font-size: 20px; line-height: 1.2640625; ">' + 'HTTP Latency over time' + '</span>'
+        },
+        'chart': {
+            'zoomType': 'x'
+        },
+        'xAxis': {
+            'type': 'linear',
+            'title': {
+                'text': styling + '#F7941C; font-size: 12px; line-height: 1.4640625; font-weight: bold;">Time since start [ms]</span>'
+            }
+        },
+        'yAxis': [
+            {
+                'title': {
+                    'text': styling + '#00AEEF; font-size: 12px; line-height: 1.2640625; font-weight: bold; ">Throughput [bps]</span>'
+                },
+            }, {
+                'title': {
+                    'text': styling + '#EC008C; font-size: 12px; line-height: 1.2640625; font-weight: bold; ">Latency [ms]</span>'
+                },
+                'opposite': 'true'
+            },
+        ],
+    }
+    chart.set_dict_options(options)
+
+    throughput_series = []
+    min_latency_series = []
+    avg_latency_series = []
+    max_latency_series = []
+    jitter_series = []
+
+    intervals = results.get('interval_results', [])
+    intervals.sort(key=lambda x: x.get('timestamp_nanoseconds', 0))
+    first_interval = intervals[0] if intervals else {}
+    first_timestamp_ns = first_interval.get('timestamp_nanoseconds', 0)
+
+    for interval in intervals:
+        avg_latency_ms = interval.get('rx_avg_latency_nanoseconds') / 1e6
+        jitter_ms = interval.get('rx_jitter_nanoseconds') / 1e6
+
+        timestamp_ns = interval.get('timestamp_nanoseconds', 0)
+        millis_since_start = (timestamp_ns - first_timestamp_ns) / 1e6
+
+        throughput_series.append((millis_since_start, interval.get('rx_throughput_bits_per_seconds') / 1e6))
+        min_latency_series.append((millis_since_start, interval.get('rx_min_latency_nanoseconds') / 1e6))
+        avg_latency_series.append((millis_since_start, avg_latency_ms))
+        max_latency_series.append((millis_since_start, interval.get('rx_max_latency_nanoseconds') / 1e6))
+
+        jitter_series.append((
+            millis_since_start,
+            avg_latency_ms - jitter_ms,
+            avg_latency_ms + jitter_ms
+        ))
+
+    chart.add_data_set(throughput_series, 'line', 'Throughput', yAxis=0)
+    chart.add_data_set(jitter_series, 'arearange', 'Jitter', yAxis=1)
+    chart.add_data_set(min_latency_series, 'line', 'Minimum Latency', yAxis=1)
+    chart.add_data_set(avg_latency_series, 'line', 'Average Latency', yAxis=1)
+    chart.add_data_set(max_latency_series, 'line', 'Maximum Latency', yAxis=1)
+
+    filename = os.path.basename(__file__).split('.')[0] + '.html'
+    with open(filename, 'w') as handle:
+        handle.write(chart.htmlcontent)
+
+    print("Plotted interval chart to %s" % (
+        os.path.join(os.path.realpath(os.getcwd()), filename)
+    ))
+
+
+def main():
+    # When this python module is called stand-alone, the run-function must be
+    # called.  This approach makes it possible to include it in a series of
+    # examples.
     example = Example(**configuration)
     try:
         outcome = example.run()
-        pprint(outcome)
+
+        print_results(outcome)
+        plot_highcharts(outcome)
+
     except api.ConfigError as e:
         print(e.what())
     finally:
         example.cleanup()
+
+
+if __name__ == "__main__":
+    main()
