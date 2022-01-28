@@ -3,9 +3,9 @@ These examples show how to configure traffic between two ByteBlower ports.
 
 - ipv4.py
 
-  Straightforward IPv4 frameblasting test.
+  Straightforward IPv4 frame-blasting test.
   
-  The speed can be configured using the frame interval (interframegap) or using
+  The speed can be configured using the frame interval ("interframegap") or using
   a given throughput in Megabits per second.  In the latter case, the frame 
   interval will be calculated.
  
@@ -28,7 +28,7 @@ These examples show how to configure traffic between two ByteBlower ports.
 
 - ipv6.py
 
-  Straightforward IPv6 frameblasting test.
+  Straightforward IPv6 frame-blasting test.
   
 - httpmulticlient.py
 
@@ -37,6 +37,22 @@ These examples show how to configure traffic between two ByteBlower ports.
 
 - tcp.py
 
-  Explains how to run statefull TCP between 2 ByteBlower ports.  IPv4 and IPv6 
+  Explains how to run stateful TCP between 2 ByteBlower ports.  IPv4 and IPv6 
   are covered.
 
+- tcp_oneway_latency.py
+  
+  Demonstrates how the TCP OneWayLatency feature can be used.
+  
+  It collects the following data for a session:
+  - total transmitted bytes
+  - total received bytes
+  - average throughput at the sending side
+  - average throughput at the receiving side
+  - the latency measurements for the data flowing from the sending side to the receiving side 
+    (minimum, average, maximum, jitter)
+  - The interval results for the session:
+    - average throughput
+    - latency measurements (minimum, average, maximum, jitter)
+  
+  
