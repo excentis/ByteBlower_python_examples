@@ -1,6 +1,14 @@
 # ByteBlower port examples
 These examples show how to configure traffic between two ByteBlower ports.
 
+- eth_vlan_only.py
+
+  Straightforward frame blasting test.  
+
+  This test only requires ethernet II and optionally VLAN connectivity.  
+  It demonstrates sending and receiving traffic with only Layer2 and optionally
+  VLAN configuration.  A QinQ (nested VLANs) configuration is also supported.
+  
 - ipv4.py
 
   Straightforward IPv4 frame-blasting test.
