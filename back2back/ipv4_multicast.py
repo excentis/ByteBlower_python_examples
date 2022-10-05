@@ -49,8 +49,8 @@ configuration = {
     # Sending 100 frames per second
     'interframegap_nanoseconds': 10000000,  # 10ms
 
-    # Send traffic for 5 minutes
-    'number_of_frames': 30000,
+    # Send traffic for 5 minutes (TODO: Change back to to 300 * 100)
+    'number_of_frames': 3 * 100,
 
     # Instead of configuring the inter-frame gap above, one can specify a
     # desired throughput too.  This conversion will be done in the __init__
@@ -92,27 +92,6 @@ class Example:
             byteblower_instance.ServerRemove(self.server)
             self.server = None
 
-    def generate_frame_string(self, src_mac, src_ip, udp_src_port, dst_mac, dst_ip, udp_dst_port):
-        ethernet_header_len = 14
-        ip_header_len = 20
-        udp_header_len = 8
-        total_header_len = ethernet_header_len + ip_header_len + udp_header_len
-        payload = 'a' * (self.frame_size - total_header_len)
-
-        from scapy.layers.inet import UDP, IP, Ether
-        from scapy.all import Raw
-        udp_payload = Raw(payload.encode('ascii', 'strict'))
-        udp_header = UDP(dport=udp_dst_port, sport=udp_src_port)
-        ip_header = IP(src=src_ip, dst=dst_ip)
-        eth_header = Ether(src=src_mac, dst=dst_mac)
-        scapy_frame = eth_header / ip_header / udp_header / udp_payload
-
-        frame_content = bytearray(bytes(scapy_frame))
-
-        # The ByteBlower API expects an 'str' as input for the
-        # frame::BytesSet() method, we need to convert the bytearray
-        return ''.join((format(b, "02x") for b in frame_content))
-
     def run(self):
         udp_src_port = 5001
         udp_dst_port = 5002
@@ -130,32 +109,22 @@ class Example:
         # Create the port which will be the HTTP client (port_2)
         self.bbport_rx = self.provision_port(self.port_2_config)
 
-        # now create the stream.
-        # A stream transmits frames on the port on which it is created.
-        stream = self.bbport_tx.TxStreamAdd()
-        stream.NumberOfFramesSet(self.number_of_frames)
-        stream.InterFrameGapSet(self.interframegap_ns)
-        frame = stream.FrameAdd()
-
-        # collect the frame header info.  We need to provide the Layer2
-        # (ethernet) and Layer3 (IPv4) addresses.
+        # Configure the flow
         src_ip = self.port_1_config['ip_address']
         src_mac = self.bbport_tx.Layer2EthIIGet().MacGet()
         dst_ip = self.port_2_config['ip_address']
         dst_mac = self.bbport_tx.Layer3IPv4Get().Resolve(dst_ip)
 
+        # Create the stream
+        stream = self.bbport_tx.TxStreamAdd()
+        stream.NumberOfFramesSet(self.number_of_frames)
+        stream.InterFrameGapSet(self.interframegap_ns)
+        frame = stream.FrameAdd()
         frame.BytesSet(self.generate_frame_string(src_mac, src_ip, udp_src_port, dst_mac, dst_ip, udp_dst_port))
 
-        # create a trigger.  A trigger is an object which receives data.
-        # The Basic trigger just count packets
+        # Create the trigger (receiver)
         trigger = self.bbport_rx.RxTriggerBasicAdd()
-
-        # every trigger needs to know on which frames it will work.
-        # The default filter is no filter, so it will analyze every frame,
-        # which is not what we want here.
-        # We will filter on the destination IP and the destination UDP port
-        bpf_filter = "ip dst {} and udp dst port {}".format(dst_ip, udp_dst_port)
-        trigger.FilterSet(bpf_filter)
+        trigger.FilterSet("ip dst {} and udp dst port {}".format(dst_ip, udp_dst_port))
 
         # print the configuration.
         # his makes it easy to review what we have done until now
@@ -266,6 +235,27 @@ class Example:
 
         print("Created port", port.DescriptionGet())
         return port
+
+    def generate_frame_string(self, src_mac, src_ip, udp_src_port, dst_mac, dst_ip, udp_dst_port):
+        ethernet_header_len = 14
+        ip_header_len = 20
+        udp_header_len = 8
+        total_header_len = ethernet_header_len + ip_header_len + udp_header_len
+        payload = 'a' * (self.frame_size - total_header_len)
+
+        from scapy.layers.inet import UDP, IP, Ether
+        from scapy.all import Raw
+        udp_payload = Raw(payload.encode('ascii', 'strict'))
+        udp_header = UDP(dport=udp_dst_port, sport=udp_src_port)
+        ip_header = IP(src=src_ip, dst=dst_ip)
+        eth_header = Ether(src=src_mac, dst=dst_mac)
+        scapy_frame = eth_header / ip_header / udp_header / udp_payload
+
+        frame_content = bytearray(bytes(scapy_frame))
+
+        # The ByteBlower API expects an 'str' as input for the
+        # frame::BytesSet() method, we need to convert the bytearray
+        return ''.join((format(b, "02x") for b in frame_content))
 
 
 # When this python module is called stand-alone, the run-function must be
