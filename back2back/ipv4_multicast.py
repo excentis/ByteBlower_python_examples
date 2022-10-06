@@ -52,13 +52,8 @@ configuration = {
     # Send traffic for 5 minutes (TODO: Change back to to 300 * 100)
     'number_of_frames': 3 * 100,
 
-    # Instead of configuring the inter-frame gap above, one can specify a
-    # desired throughput too.  This conversion will be done in the __init__
-    # function of the example.
-    # When set, the throughput is used, otherwise interframegap above will
-    # be used.
-    # Units: Mbit/s
-    # 'throughput': 400
+    # The multicast IP address that is used for this test.
+    'multicast_ip': "232.8.1.1"
 }
 
 
@@ -72,6 +67,8 @@ class Example:
         self.frame_size = kwargs['frame_size']
 
         self.interframegap_ns = kwargs['interframegap_nanoseconds']
+
+        self.multicast_ip = kwargs['multicast_ip']
 
         self.server = None
         self.bbport_tx = None
@@ -112,9 +109,8 @@ class Example:
         # Configure the flow
         src_ip = self.port_1_config['ip_address']
         src_mac = self.bbport_tx.Layer2EthIIGet().MacGet()
-        dst_ip = self.port_2_config['ip_address']
+        dst_ip = self.multicast_ip
         dst_mac = self.convert_multicast_ip_to_mac(dst_ip)
-        #dst_mac = self.bbport_tx.Layer3IPv4Get().Resolve(dst_ip)
 
         # Create the stream
         stream = self.bbport_tx.TxStreamAdd()
