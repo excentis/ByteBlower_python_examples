@@ -17,7 +17,7 @@ configuration = {
 
     # Configuration for the first ByteBlower port.
     # Will be used as the TX port.
-    'port_1_config': {
+    'tx_port_config': {
         'interface': 'nontrunk-1',
         'mac': '00:bb:01:00:00:01',
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
@@ -30,7 +30,7 @@ configuration = {
 
     # Configuration for the second ByteBlower port.
     # Will be used as RX port.
-    'port_2_config': {
+    'rx_port_config': {
         'interface': 'nontrunk-2',
         'mac': '00:bb:01:00:00:02',
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
@@ -60,8 +60,8 @@ configuration = {
 class Example:
     def __init__(self, **kwargs):
         self.server_address = kwargs['server_address']
-        self.port_1_config = kwargs['port_1_config']
-        self.port_2_config = kwargs['port_2_config']
+        self.tx_port_config = kwargs['tx_port_config']
+        self.rx_port_config = kwargs['rx_port_config']
 
         self.number_of_frames = kwargs['number_of_frames']
         self.frame_size = kwargs['frame_size']
@@ -100,14 +100,14 @@ class Example:
 
         # Create the sending port
         print("Creating TX port")
-        self.bbport_tx = self.provision_port(self.port_1_config)
+        self.bbport_tx = self.provision_port(self.tx_port_config)
 
         print("Creating RX port")
         # Create the port which will be the HTTP client (port_2)
-        self.bbport_rx = self.provision_port(self.port_2_config)
+        self.bbport_rx = self.provision_port(self.rx_port_config)
 
         # Configure the flow
-        src_ip = self.port_1_config['ip_address']
+        src_ip = self.tx_port_config['ip_address']
         src_mac = self.bbport_tx.Layer2EthIIGet().MacGet()
         dst_ip = self.multicast_ip
         dst_mac = self.convert_multicast_ip_to_mac(dst_ip)
@@ -141,6 +141,14 @@ class Example:
         duration_s = duration_ns / 1000000000 + 1
 
         stream.Start()
+
+
+        # Create IGMPv3 session on third bbport (multicast client port)
+        # Listen with empty exclude.
+        #
+
+
+
 
         # duration_s is a float, so we need to cast it to an integer first
         for iteration in range(1, int(duration_s)):
