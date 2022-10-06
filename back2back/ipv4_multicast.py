@@ -113,7 +113,7 @@ class Example:
         src_ip = self.port_1_config['ip_address']
         src_mac = self.bbport_tx.Layer2EthIIGet().MacGet()
         dst_ip = self.port_2_config['ip_address']
-        dst_mac = self.convert_multicast_ip_to_multicast_mac(dst_ip)
+        dst_mac = self.convert_multicast_ip_to_mac(dst_ip)
         #dst_mac = self.bbport_tx.Layer3IPv4Get().Resolve(dst_ip)
 
         # Create the stream
@@ -262,7 +262,7 @@ class Example:
     # For example "224.128.0.1" will become "01-00-5e-00-00-01"
     # This function expects a valid IP address to be passed!
     @staticmethod
-    def convert_multicast_ip_to_multicast_mac(ip):
+    def convert_multicast_ip_to_mac(ip):
         digits = [int(i) for i in ip.split('.')]
         return "01:00:5e:{:02x}:{:02x}:{:02x}".format(0x7f & digits[1], digits[2], digits[3])
 
