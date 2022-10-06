@@ -113,7 +113,8 @@ class Example:
         src_ip = self.port_1_config['ip_address']
         src_mac = self.bbport_tx.Layer2EthIIGet().MacGet()
         dst_ip = self.port_2_config['ip_address']
-        dst_mac = self.bbport_tx.Layer3IPv4Get().Resolve(dst_ip)
+        dst_mac = self.convert_multicast_ip_to_multicast_mac(dst_ip)
+        #dst_mac = self.bbport_tx.Layer3IPv4Get().Resolve(dst_ip)
 
         # Create the stream
         stream = self.bbport_tx.TxStreamAdd()
@@ -256,6 +257,14 @@ class Example:
         # The ByteBlower API expects an 'str' as input for the
         # frame::BytesSet() method, we need to convert the bytearray
         return ''.join((format(b, "02x") for b in frame_content))
+
+    # Converts a multicast IP to a multicast MAC address.
+    # For example "224.128.0.1" will become "01-00-5e-00-00-01"
+    # This function expects a valid IP address to be passed!
+    @staticmethod
+    def convert_multicast_ip_to_multicast_mac(ip):
+        digits = [int(i) for i in ip.split('.')]
+        return "01:00:5e:{:02x}:{:02x}:{:02x}".format(0x7f & digits[1], digits[2], digits[3])
 
 
 # When this python module is called stand-alone, the run-function must be
