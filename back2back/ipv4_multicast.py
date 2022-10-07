@@ -177,8 +177,6 @@ class Example:
         # igmp_session.MulticastListen(MulticastSourceFilter.Include, include_sources)
 
 
-        # Get the session info for the IGMP stats
-        igmp_session_info = igmp_session.SessionInfoGet()
 
 
 
@@ -223,6 +221,8 @@ class Example:
         tx_frames = stream_result.PacketCountGet()
         rx_frames = trigger_result.PacketCountGet()
 
+        # Get the session info for the IGMP stats
+        igmp_session_info = igmp_session.SessionInfoGet()
         igmp_session_info.Refresh()
         print("IGMP statistics:", igmp_session_info.DescriptionGet())
 
