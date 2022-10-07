@@ -12,6 +12,7 @@ from time import sleep
 import byteblowerll.byteblower
 from byteblowerll.byteblower import ByteBlower
 from byteblowerll.byteblower import MulticastSourceFilter
+from byteblowerll.byteblower import StringList
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -160,18 +161,24 @@ class Example:
 
 
         # Create IGMPv3 session on third bbport (multicast client port)
-        # Listen with empty exclude.
-
-        print(self.bbport_multicast_client.DescriptionGet())
         igmp = self.bbport_multicast_client.Layer3IPv4Get().ProtocolIgmpGet()
-
         igmp_session = igmp.SessionV3Add(self.multicast_ip)
-        igmp_session.MulticastListen(MulticastSourceFilter.Exclude, byteblowerll.byteblower.StringList())
 
-        #	set ip1Igmpv3Session1 [ $ip1IgmpProtocol Session.V3.Add $multicastAddress1 ]
-        #	$ip1Igmpv3Session1 Multicast.Listen exclude {}
+        # Example for multicast listen with "exclude" filter:
+        exclude_sources = StringList()
+        # exclude_sources.push_back("1.2.3.4")  # Exclude "1.2.3.4"
+        # ...
+        igmp_session.MulticastListen(MulticastSourceFilter.Exclude, exclude_sources)
+
+        # Example for multicast listen with "include" filter:
+        # include_sources = StringList()
+        # include_sources.push_back(src_ip)
+        # ...
+        # igmp_session.MulticastListen(MulticastSourceFilter.Include, include_sources)
 
 
+        # Get the session info for the IGMP stats
+        igmp_session_info = igmp_session.SessionInfoGet()
 
 
 
@@ -215,6 +222,9 @@ class Example:
 
         tx_frames = stream_result.PacketCountGet()
         rx_frames = trigger_result.PacketCountGet()
+
+        igmp_session_info.Refresh()
+        print("IGMP statistics:", igmp_session_info.DescriptionGet())
 
         print("Sent {TX} frames, received {RX} frames".format(TX=tx_frames, RX=rx_frames))
 
