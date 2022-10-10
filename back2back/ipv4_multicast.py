@@ -41,20 +41,7 @@ configuration = {
         # if staticv4, use ["ipaddress", netmask, gateway]
         'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
     },
-
-    # Configuration for the multicast client ByteBlower port.
-    'multicast_client_port_config': {
-        'interface': 'nontrunk-2',
-        'mac': '00:bb:01:00:00:03',
-        # IP configuration for the ByteBlower Port.  Only IPv4 is supported
-        # Options are 'DHCPv4', 'static'
-        # if DHCPv4, use "dhcpv4"
-        # 'ip': 'dhcpv4',
-        # if staticv4, use ["ipaddress", netmask, gateway]
-        'ip': ['192.168.0.3', "255.255.255.0", "192.168.0.1"],
-    },
-
-
+    
     # Size of the frames to be sent (without CRC).
     # Unit: Bytes
     'frame_size': 512,
@@ -75,7 +62,6 @@ class Example:
         self.server_address = kwargs['server_address']
         self.tx_port_config = kwargs['tx_port_config']
         self.rx_port_config = kwargs['rx_port_config']
-        self.multicast_client_port_config = kwargs['multicast_client_port_config']
 
         self.number_of_frames = kwargs['number_of_frames']
         self.frame_size = kwargs['frame_size']
@@ -120,9 +106,6 @@ class Example:
         print("Creating RX port")
         self.bbport_rx = self.provision_port(self.rx_port_config)
 
-        print("Creating multicast client port")
-        self.bbport_multicast_client = self.provision_port(self.multicast_client_port_config)
-
         # Configure the flow
         src_ip = self.tx_port_config['ip_address']
         src_mac = self.bbport_tx.Layer2EthIIGet().MacGet()
@@ -157,7 +140,7 @@ class Example:
         stream.Start()
 
         # Create IGMPv3 session on third bbport (multicast client port)
-        igmp = self.bbport_multicast_client.Layer3IPv4Get().ProtocolIgmpGet()
+        igmp = self.bbport_rx.Layer3IPv4Get().ProtocolIgmpGet()
         igmp_session = igmp.SessionV3Add(self.multicast_ip)
 
         # Create an "exclude" filter for the multicast listen command:
