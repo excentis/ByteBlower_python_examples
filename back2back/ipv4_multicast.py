@@ -16,7 +16,7 @@ from byteblowerll.byteblower import StringList
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
+    'server_address': 'byteblower-dev-4100-3.lab.byteblower.excentis.com',
 
     # Configuration for the sender ByteBlower port.
     'tx_port_config': {
