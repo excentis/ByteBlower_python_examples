@@ -139,7 +139,7 @@ class Example:
 
         stream.Start()
 
-        # Create IGMPv3 session on third bbport (multicast client port)
+        # Create IGMPv3 session that listens to the multicast IP.
         igmp = self.bbport_rx.Layer3IPv4Get().ProtocolIgmpGet()
         igmp_session = igmp.SessionV3Add(self.multicast_ip)
 
