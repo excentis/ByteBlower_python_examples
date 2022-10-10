@@ -157,6 +157,10 @@ class Example:
         # include_sources.push_back(src_ip)
         # ...
         # igmp_session.MulticastListen(MulticastSourceFilter.Include, include_sources)
+        #
+        # To stop listening, use an "include" command with an empty source list:
+        #  igmp_session.MulticastListen(MulticastSourceFilter.Include, StringList())
+
 
         duration_ns = self.interframegap_ns * self.number_of_frames
         duration_s = duration_ns / 1000000000 + 1
