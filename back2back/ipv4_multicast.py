@@ -161,7 +161,6 @@ class Example:
         # To stop listening, use an "include" command with an empty source list:
         #  igmp_session.MulticastListen(MulticastSourceFilter.Include, StringList())
 
-
         duration_ns = self.interframegap_ns * self.number_of_frames
         duration_s = duration_ns / 1000000000 + 1
         for iteration in range(1, int(duration_s)):
