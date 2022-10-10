@@ -16,30 +16,30 @@ from byteblowerll.byteblower import StringList
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
-    'server_address': 'byteblower-dev-4100-3.lab.byteblower.excentis.com',
+    'server_address': 'byteblower-tp-1300.lab.byteblower.excentis.com',
 
     # Configuration for the sender ByteBlower port.
     'tx_port_config': {
-        'interface': 'nontrunk-1',
+        'interface': 'trunk-1-13',
         'mac': '00:bb:01:00:00:01',
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
-        # 'ip': 'dhcpv4',
+        'ip': 'dhcpv4',
         # if staticv4, use ["ipaddress", netmask, gateway]
-        'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
+        # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
     },
 
     # Configuration for the receiver ByteBlower port.
     'rx_port_config': {
-        'interface': 'nontrunk-2',
+        'interface': 'trunk-1-19',
         'mac': '00:bb:01:00:00:02',
         # IP configuration for the ByteBlower Port.  Only IPv4 is supported
         # Options are 'DHCPv4', 'static'
         # if DHCPv4, use "dhcpv4"
-        # 'ip': 'dhcpv4',
+        'ip': 'dhcpv4',
         # if staticv4, use ["ipaddress", netmask, gateway]
-        'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
+        # 'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
     },
 
     # Size of the frames to be sent (without CRC).
@@ -50,7 +50,7 @@ configuration = {
     'interframegap_nanoseconds': 10000000,  # 10ms
 
     # Send traffic for 5 minutes (TODO: Change back to to 300 * 100)
-    'number_of_frames': 3 * 100,
+    'number_of_frames': 300 * 100,
 
     # The multicast IP address that is used for this test.
     'multicast_ip': "232.8.1.1"
@@ -148,6 +148,8 @@ class Example:
         exclude_sources = StringList()
         # exclude_sources.push_back("1.2.3.4")  # Exclude "1.2.3.4"
         # ...
+        # Start listening. Note it may take a few seconds
+        # before we start receiving the multicast packets!
         igmp_session.MulticastListen(MulticastSourceFilter.Exclude, exclude_sources)
 
         # Example for multicast listen with "include" filter:
