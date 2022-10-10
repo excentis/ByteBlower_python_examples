@@ -143,7 +143,7 @@ class Example:
         igmp = self.bbport_rx.Layer3IPv4Get().ProtocolIgmpGet()
         igmp_session = igmp.SessionV3Add(self.multicast_ip)
 
-        # Create an "exclude" filter for the multicast listen command:
+        # Create an "exclude" filter for the multicast source IPs.
         # We're using an empty filter to accept all IP sources.
         exclude_sources = StringList()
         # exclude_sources.push_back("1.2.3.4")  # Exclude "1.2.3.4"
