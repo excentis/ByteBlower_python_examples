@@ -154,17 +154,14 @@ class Example:
         stream_history = stream.ResultHistoryGet()
         trigger_history = trigger.ResultHistoryGet()
 
-        duration_ns = self.interframegap_ns * self.number_of_frames
-        duration_s = duration_ns / 1000000000 + 1
-
         stream.Start()
-
 
         # Create IGMPv3 session on third bbport (multicast client port)
         igmp = self.bbport_multicast_client.Layer3IPv4Get().ProtocolIgmpGet()
         igmp_session = igmp.SessionV3Add(self.multicast_ip)
 
-        # Example for multicast listen with "exclude" filter:
+        # Create an "exclude" filter for the multicast listen command:
+        # We're using an empty filter to accept all IP sources.
         exclude_sources = StringList()
         # exclude_sources.push_back("1.2.3.4")  # Exclude "1.2.3.4"
         # ...
@@ -176,11 +173,8 @@ class Example:
         # ...
         # igmp_session.MulticastListen(MulticastSourceFilter.Include, include_sources)
 
-
-
-
-
-        # duration_s is a float, so we need to cast it to an integer first
+        duration_ns = self.interframegap_ns * self.number_of_frames
+        duration_s = duration_ns / 1000000000 + 1
         for iteration in range(1, int(duration_s)):
             # sleep one second
             sleep(1)
