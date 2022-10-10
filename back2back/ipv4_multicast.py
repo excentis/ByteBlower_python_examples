@@ -41,7 +41,7 @@ configuration = {
         # if staticv4, use ["ipaddress", netmask, gateway]
         'ip': ['192.168.0.2', "255.255.255.0", "192.168.0.1"],
     },
-    
+
     # Size of the frames to be sent (without CRC).
     # Unit: Bytes
     'frame_size': 512,
@@ -275,7 +275,7 @@ class Example:
         return ''.join((format(b, "02x") for b in frame_content))
 
     # Converts a multicast IP to a multicast MAC address.
-    # For example "224.128.0.1" will become "01-00-5e-00-00-01"
+    # For example "224.128.0.1" will become "01:00:5e:00:00:01"
     # This function expects a valid IP address to be passed!
     @staticmethod
     def convert_multicast_ip_to_mac(ip):
