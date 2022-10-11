@@ -293,9 +293,9 @@ class Example:
         # frame::BytesSet() method, we need to convert the bytearray
         return ''.join((format(b, "02x") for b in frame_content))
 
-    # Converts a multicast IP to a multicast MAC address.
-    # For example "224.128.0.1" will become "01:00:5e:00:00:01"
-    # This function expects a valid IP address to be passed!
+    # Converts a multicast IPv6 to a multicast MAC address.
+    # For example "ff05:0000:0000:0000:0000:0000:0002:0001," will become "33:33:00:02:00:01"
+    # This function expects a valid IPv6 address to be passed!
     @staticmethod
     def convert_multicast_ip_to_mac(ip_str):
         ip = ipaddress.IPv6Address(ip_str).exploded
