@@ -49,7 +49,7 @@ configuration = {
     # Sending 100 frames per second
     'interframegap_nanoseconds': 10000000,  # 10ms
 
-    # Send traffic for 5 minutes (TODO: Change back to to 300 * 100)
+    # Send traffic for 5 minutes
     'number_of_frames': 300 * 100,
 
     # The multicast IP address that is used for this test.
