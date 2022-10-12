@@ -57,8 +57,7 @@ configuration = {
     'number_of_frames': 10 * 100,
 
     # The multicast IP address that is used for this test.
-    'multicast_ip': "ff05:0000:0000:0000:0000:0000:0002:0001"
-    #'multicast_ip': "FF05:0:0:0:0:0:2:0001"
+    'multicast_ip': "FF05:0:0:0:0:0:2:0001"
 
 }
 
