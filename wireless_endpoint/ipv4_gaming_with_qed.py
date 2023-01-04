@@ -1,5 +1,6 @@
 """
-Basic IPv4 with latency measurement example for the ByteBlower Python API.
+Basic latency QED example for the ByteBlower Python API.
+Simulating Counterstrike gaming traffic.
 All examples are guaranteed to work with Python 2.7 and above
 
 Copyright 2021, Excentis N.V.
