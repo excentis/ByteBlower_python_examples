@@ -37,3 +37,9 @@
 - networkinfomonitory.py
 
   Explains the general use of the NetworkInfoMonitor object
+
+- ipv4_gaming_with_qed.py
+
+  Calculates the QED (Quality of Experience Delivered) of Counterstrike gaming traffic.
+  A QED graph is generated for both upstream and downstream traffic.
+
