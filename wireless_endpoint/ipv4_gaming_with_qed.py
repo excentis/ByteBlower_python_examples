@@ -5,8 +5,10 @@ All examples are guaranteed to work with Python 2.7 and above
 Copyright 2021, Excentis N.V.
 """
 
+from __future__ import division
 from __future__ import print_function
 
+import collections
 import json
 import math
 import time
@@ -43,8 +45,8 @@ configuration = {
     # Special value: None.  When the UUID is set to None, the example will
     # automatically select the first available wireless endpoint.
     # 'wireless_endpoint_uuid': None,
-    'wireless_endpoint_uuid': '977d5a57-8668-436e-ae81-2cfda87cc8ef',  # laptop 56
-    # 'wireless_endpoint_uuid': '3c2e5afe66779ec7',  # S10e
+    # 'wireless_endpoint_uuid': '977d5a57-8668-436e-ae81-2cfda87cc8ef',  # laptop 56
+    'wireless_endpoint_uuid': '3c2e5afe66779ec7',  # S10e
     # 'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
 
     # Whether the Wireless Endpoint is behind a NATted device.
@@ -56,12 +58,11 @@ configuration = {
     'us_frame_size': 200,  # Average upstream packet size for Counter Strike gaming traffic
 
     # Number of frames to send.
-    'number_of_frames': 2000,
+    'number_of_frames': 4000,
     # 'number_of_frames': 20000,
-    # 'number_of_frames': 460800, # 1h
     # 'number_of_frames': 76800,  # 10m
     # 'number_of_frames': 153600,  # 20m
-
+    # 'number_of_frames': 460800,  # 1h
 
     # How fast must the frames be sent.
     # 'interframe_gap_nanoseconds': 15625000, #64 pps equals "Casual Gaming"
@@ -75,8 +76,8 @@ configuration = {
     'range_min': 0,
     # 'range_max': int(1e7),  # 10ms
     # 'range_max': int(2e7),  # 20ms
-    'range_max': int(2e8),  # 200ms
-    # 'range_max': int(3e8),  # 300ms
+    # 'range_max': int(2e8),  # 200ms
+    'range_max': int(5e8),  # 500ms
     # 'range_max': int(1e9), #1s
 
     'qed_percentiles': {
@@ -675,6 +676,7 @@ def calculate_qed(histograms, percentiles):
                     latency = None
 
                 latencies.append([timestamp, latency])
+
         qed_over_time.append({
             'percentile': percent,
             'latencies': latencies
@@ -684,7 +686,8 @@ def calculate_qed(histograms, percentiles):
 
 def write_html_chart(title, qed):
     chart = create_highcharts(title)
-    for item in qed:
+    sorted_list = sorted(qed, key=lambda x: x['percentile'])
+    for item in sorted_list:
         percentile = item.get('percentile')
         chart.add_data_set(item.get('latencies'), 'line', str(percentile), yAxis=0)
     chart.save_file(title)
