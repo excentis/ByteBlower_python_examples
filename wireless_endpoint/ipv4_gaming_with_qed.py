@@ -1,6 +1,5 @@
 """
-Basic latency QED example for the ByteBlower Python API.
-Simulating Counterstrike gaming traffic.
+Basic IPv4 with latency measurement example for the ByteBlower Python API.
 All examples are guaranteed to work with Python 2.7 and above
 
 Copyright 2021, Excentis N.V.
@@ -12,7 +11,6 @@ import json
 import math
 import time
 from datetime import datetime
-from enum import Enum
 
 from byteblowerll import byteblower as api
 from highcharts import Highchart
@@ -45,8 +43,8 @@ configuration = {
     # Special value: None.  When the UUID is set to None, the example will
     # automatically select the first available wireless endpoint.
     # 'wireless_endpoint_uuid': None,
-    # 'wireless_endpoint_uuid': '977d5a57-8668-436e-ae81-2cfda87cc8ef', # laptop
-    'wireless_endpoint_uuid': '3c2e5afe66779ec7',  # S10e
+    'wireless_endpoint_uuid': '977d5a57-8668-436e-ae81-2cfda87cc8ef',  # laptop 56
+    # 'wireless_endpoint_uuid': '3c2e5afe66779ec7',  # S10e
     # 'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
 
     # Whether the Wireless Endpoint is behind a NATted device.
@@ -58,8 +56,12 @@ configuration = {
     'us_frame_size': 200,  # Average upstream packet size for Counter Strike gaming traffic
 
     # Number of frames to send.
-    # 'number_of_frames': 2000,
-    'number_of_frames': 20000,
+    'number_of_frames': 2000,
+    # 'number_of_frames': 20000,
+    # 'number_of_frames': 460800, # 1h
+    # 'number_of_frames': 76800,  # 10m
+    # 'number_of_frames': 153600,  # 20m
+
 
     # How fast must the frames be sent.
     # 'interframe_gap_nanoseconds': 15625000, #64 pps equals "Casual Gaming"
@@ -73,7 +75,8 @@ configuration = {
     'range_min': 0,
     # 'range_max': int(1e7),  # 10ms
     # 'range_max': int(2e7),  # 20ms
-    'range_max': int(3e8),  # 300ms
+    'range_max': int(2e8),  # 200ms
+    # 'range_max': int(3e8),  # 300ms
     # 'range_max': int(1e9), #1s
 
     'qed_percentiles': {
@@ -93,7 +96,8 @@ def get_buckets(histograms):
     interval_length = histograms.IntervalLengthGet()
 
     for idx in range(interval_length):
-        interval: api.LatencyDistributionResultData = histograms.IntervalGetByIndex(idx)
+        # interval: api.LatencyDistributionResultData = histograms.IntervalGetByIndex(idx)
+        interval = histograms.IntervalGetByIndex(idx)
         interval_packet_count = interval.PacketCountGet()
         bucket_count = interval.BucketCountGet()
 
@@ -155,18 +159,16 @@ class Example:
         self.json_results_filename = 'samples.json'
 
         # Set to True when you want to save the test results and reuse them. This saves time while developing.
-        # self.reuse_results = False
-        self.reuse_results = True
+        self.reuse_results = False
+        # self.reuse_results = True
 
         self.write_html_charts = True
         self.chart_title = 'Samsung S10e'
+        # self.chart_title = 'Counterstrike - Laptop 56'
 
     def load_earlier_results(self):
-        try:
-            with open(self.json_results_filename) as json_file:
-                return json.load(json_file)
-        except FileNotFoundError:
-            return None
+        with open(self.json_results_filename) as json_file:
+            return json.load(json_file)
 
     def run_new_test(self):
         byteblower_instance = api.ByteBlower.InstanceGet()
@@ -248,7 +250,8 @@ class Example:
         # receives data.  The Basic trigger just count packets,
         # a LatencyBasic trigger analyzes the timestamps embedded in the
         # received frame.
-        ds_latency_trigger: api.LatencyDistributionMobile = self.wireless_endpoint.RxLatencyDistributionAdd()
+        # ds_latency_trigger: api.LatencyDistributionMobile = self.wireless_endpoint.RxLatencyDistributionAdd()
+        ds_latency_trigger = self.wireless_endpoint.RxLatencyDistributionAdd()
         ds_latency_trigger.DurationSet(duration_ns)
         ds_latency_trigger.FilterUdpSourcePortSet(self.udp_srcport)
         ds_latency_trigger.FilterUdpDestinationPortSet(self.udp_dstport)
@@ -256,7 +259,8 @@ class Example:
         ds_latency_trigger.RangeSet(self.range_min, self.range_max)
 
         print("Creating the US trigger...")
-        us_latency_trigger: api.LatencyDistribution = self.port.RxLatencyDistributionAdd()
+        # us_latency_trigger: api.LatencyDistribution = self.port.RxLatencyDistributionAdd()
+        us_latency_trigger = self.port.RxLatencyDistributionAdd()
         bpf = "ip src host " + endpoint_ipv4 + " and udp src port " + str(self.udp_dstport)
         us_latency_trigger.FilterSet(bpf)
         us_latency_trigger.RangeSet(self.range_min, self.range_max)
@@ -267,7 +271,8 @@ class Example:
         down_stream.NumberOfFramesSet(self.number_of_frames)
 
         print("Creating the UP stream...")
-        up_stream: api.StreamMobile = self.wireless_endpoint.TxStreamAdd()
+        # up_stream: api.StreamMobile = self.wireless_endpoint.TxStreamAdd()
+        up_stream = self.wireless_endpoint.TxStreamAdd()
         up_stream.InterFrameGapSet(self.frame_interval_nanoseconds)
         up_stream.NumberOfFramesSet(self.number_of_frames)
         up_stream.DestinationAddressSet(port_ipv4)
@@ -301,7 +306,8 @@ class Example:
         # modifier.MinimumSet(60)
         # modifier.MaximumSet(1283)
 
-        us_frame: api.FrameMobile = up_stream.FrameAdd()
+        # us_frame: api.FrameMobile = up_stream.FrameAdd()
+        us_frame = up_stream.FrameAdd()
         us_frame.PayloadSet(us_hexbytes)
 
         # Enable latency for this frame.
@@ -357,8 +363,10 @@ class Example:
         down_stream.Start()
 
         # Getting the Histograms over time:
-        us_latency_result: api.LatencyDistributionResultSnapshot = us_latency_trigger.ResultGet()
-        us_history: api.LatencyDistributionResultHistory = us_latency_trigger.ResultHistoryGet()
+        # us_latency_result: api.LatencyDistributionResultSnapshot = us_latency_trigger.ResultGet()
+        us_latency_result = us_latency_trigger.ResultGet()
+        # us_history: api.LatencyDistributionResultHistory = us_latency_trigger.ResultHistoryGet()
+        us_history = us_latency_trigger.ResultHistoryGet()
 
         print("Waiting for the test to finish")
         seconds = math.ceil(duration_ns / 1000000000.0)
@@ -376,20 +384,27 @@ class Example:
         sleep(1)
 
         # Get all results from the ByteBlower Endpoint
+        self.wireless_endpoint.HeartbeatIntervalSet(10)
         self.wireless_endpoint.ResultGet()
-        ds_stream_result: api.StreamResultSnapshot = down_stream.ResultGet()
+        self.wireless_endpoint.HeartbeatIntervalSet(1)
+
+        # ds_stream_result: api.StreamResultSnapshot = down_stream.ResultGet()
+        ds_stream_result = down_stream.ResultGet()
         ds_stream_result.Refresh()
 
-        ds_latency_result: api.LatencyDistributionResultSnapshot = ds_latency_trigger.ResultGet()
+        # ds_latency_result: api.LatencyDistributionResultSnapshot = ds_latency_trigger.ResultGet()
+        ds_latency_result = ds_latency_trigger.ResultGet()
         ds_latency_result.Refresh()
 
         print(ds_latency_result.DescriptionGet())
 
-        stream_result_history: api.LatencyDistributionResultHistory = down_stream.ResultHistoryGet()
+        # stream_result_history: api.LatencyDistributionResultHistory = down_stream.ResultHistoryGet()
+        stream_result_history = down_stream.ResultHistoryGet()
         stream_result_history.Refresh()
 
         # Getting the Histograms over time:
-        ds_history: api.LatencyDistributionResultHistory = ds_latency_trigger.ResultHistoryGet()
+        # ds_history: api.LatencyDistributionResultHistory = ds_latency_trigger.ResultHistoryGet()
+        ds_history = ds_latency_trigger.ResultHistoryGet()
         ds_buckets_history = get_buckets(ds_history)
 
         us_latency_result.Refresh()
@@ -588,7 +603,7 @@ def create_highcharts(title):
     return chart
 
 
-class RangeType(Enum):
+class RangeType():
     BELOW = 1
     INSIDE = 2
     ABOVE = 3
@@ -618,8 +633,6 @@ def calculate_cumulative_percentages(below, buckets, total):
     for bucket in buckets:
         count += bucket
         cumulative.append(count / total * 100)
-        # if count == total:
-        #     break
     return cumulative
 
 
@@ -662,7 +675,6 @@ def calculate_qed(histograms, percentiles):
                     latency = None
 
                 latencies.append([timestamp, latency])
-
         qed_over_time.append({
             'percentile': percent,
             'latencies': latencies
