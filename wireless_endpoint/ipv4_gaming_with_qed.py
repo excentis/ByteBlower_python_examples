@@ -58,11 +58,11 @@ configuration = {
     'us_frame_size': 200,  # Average upstream packet size for Counter Strike gaming traffic
 
     # Number of frames to send.
-    'number_of_frames': 4000,
+    # 'number_of_frames': 4000,
     # 'number_of_frames': 20000,
     # 'number_of_frames': 76800,  # 10m
     # 'number_of_frames': 153600,  # 20m
-    # 'number_of_frames': 460800,  # 1h
+    'number_of_frames': 460800,  # 1h
 
     # How fast must the frames be sent.
     # 'interframe_gap_nanoseconds': 15625000, #64 pps equals "Casual Gaming"
@@ -76,8 +76,9 @@ configuration = {
     'range_min': 0,
     # 'range_max': int(1e7),  # 10ms
     # 'range_max': int(2e7),  # 20ms
+    'range_max': int(1e8),  # 100ms
     # 'range_max': int(2e8),  # 200ms
-    'range_max': int(5e8),  # 500ms
+    # 'range_max': int(5e8),  # 500ms
     # 'range_max': int(1e9), #1s
 
     'qed_percentiles': {
@@ -92,39 +93,19 @@ configuration = {
 }
 
 
-def get_buckets(histograms):
-    buckets_history = []
-    interval_length = histograms.IntervalLengthGet()
+def make_cumulative(histogram):
+    buckets = histogram.get('interval_packet_count_buckets')
+    below_min = histogram.get('interval_packet_count_below_min')
+    total = histogram.get('interval_packet_count')
 
-    for idx in range(interval_length):
-        # interval: api.LatencyDistributionResultData = histograms.IntervalGetByIndex(idx)
-        interval = histograms.IntervalGetByIndex(idx)
-        interval_packet_count = interval.PacketCountGet()
-        bucket_count = interval.BucketCountGet()
-
-        if interval_packet_count:
-            packet_count_below_min = interval.PacketCountBelowMinimumGet()
-            packet_count_buckets = [int(val) for val in interval.PacketCountBucketsGet()]
-            packet_count_in_buckets = sum(packet_count_buckets)
-            packet_count_above_max = interval.PacketCountAboveMaximumGet()
-        else:
-            packet_count_below_min = 0
-            packet_count_buckets = [0 for _ in range(bucket_count)]
-            packet_count_in_buckets = 0
-            packet_count_above_max = 0
-
-        buckets_history.append({
-            'interval_timestamp': interval.TimestampGet(),
-            'interval_range_min': interval.RangeMinimumGet(),
-            'interval_range_max': interval.RangeMaximumGet(),
-            'interval_packet_count': interval_packet_count,
-            'interval_packet_count_below_min': packet_count_below_min,
-            'interval_packet_count_in_buckets': packet_count_in_buckets,
-            'interval_packet_count_buckets': packet_count_buckets,
-            'interval_packet_count_above_max': packet_count_above_max
-        })
-
-    return buckets_history
+    if total:
+        percentage_below_range = below_min / total * 100
+        histogram['percentage_below_range'] = percentage_below_range
+        cumulative_histogram = calculate_cumulative_percentages(
+            below_min,
+            buckets,
+            total)
+        histogram['cumulative_buckets'] = cumulative_histogram
 
 
 class Example:
@@ -145,6 +126,8 @@ class Example:
         self.us_frame_size = kwargs.pop('us_frame_size', 200)
         self.number_of_frames = kwargs.pop('number_of_frames', 2000)
         self.frame_interval_nanoseconds = kwargs.pop('interframe_gap_nanoseconds', 10000000)
+        self.expected_packets_per_second = 1e9 / self.frame_interval_nanoseconds
+
         self.udp_srcport = kwargs.pop('udp_srcport', 4096)
         self.udp_dstport = kwargs.pop('udp_dstport', 4096)
 
@@ -170,6 +153,42 @@ class Example:
     def load_earlier_results(self):
         with open(self.json_results_filename) as json_file:
             return json.load(json_file)
+
+    def get_buckets(self, histograms):
+        buckets_history = []
+        interval_length = histograms.IntervalLengthGet()
+
+        for idx in range(interval_length):
+            # interval: api.LatencyDistributionResultData = histograms.IntervalGetByIndex(idx)
+            interval = histograms.IntervalGetByIndex(idx)
+            interval_packet_count = interval.PacketCountGet()  # should be
+            # interval_packet_loss = expected_packets_per_second - interval_packet_count
+            bucket_count = interval.BucketCountGet()
+
+            if interval_packet_count:
+                packet_count_below_min = interval.PacketCountBelowMinimumGet()
+                packet_count_buckets = [int(val) for val in interval.PacketCountBucketsGet()]
+                packet_count_in_buckets = sum(packet_count_buckets)
+                packet_count_above_max = interval.PacketCountAboveMaximumGet()
+            else:
+                packet_count_below_min = 0
+                packet_count_buckets = [0 for _ in range(bucket_count)]
+                packet_count_in_buckets = 0
+                packet_count_above_max = 0
+
+            buckets_history.append({
+                'interval_timestamp': interval.TimestampGet(),
+                'interval_range_min': interval.RangeMinimumGet(),
+                'interval_range_max': interval.RangeMaximumGet(),
+                'interval_packet_count': interval_packet_count,
+                'interval_packet_count_below_min': packet_count_below_min,
+                'interval_packet_count_in_buckets': packet_count_in_buckets,
+                'interval_packet_count_buckets': packet_count_buckets,
+                'interval_packet_count_above_max': packet_count_above_max
+                # 'interval_packet_loss': interval_packet_loss
+            })
+
+        return buckets_history
 
     def run_new_test(self):
         byteblower_instance = api.ByteBlower.InstanceGet()
@@ -406,10 +425,10 @@ class Example:
         # Getting the Histograms over time:
         # ds_history: api.LatencyDistributionResultHistory = ds_latency_trigger.ResultHistoryGet()
         ds_history = ds_latency_trigger.ResultHistoryGet()
-        ds_buckets_history = get_buckets(ds_history)
+        ds_buckets_history = self.get_buckets(ds_history)
 
         us_latency_result.Refresh()
-        us_buckets_history = get_buckets(us_history)
+        us_buckets_history = self.get_buckets(us_history)
         print(us_latency_result.DescriptionGet())
 
         # Tell the ByteBlower server it can clean up its resources.
@@ -423,6 +442,42 @@ class Example:
 
         return output_dict
 
+    def calculate_qed(self, histograms):
+        qed_over_time = []
+
+        for histogram in histograms:
+            make_cumulative(histogram)
+
+        for percent in self.qed_percentiles.keys():
+            latencies = []
+            for histogram in histograms:
+                cumulative = histogram.get('cumulative_buckets')
+                if cumulative:
+                    below = histogram.get('interval_packet_count_below_min')
+
+                    timestamp = datetime.fromtimestamp(histogram.get('interval_timestamp') // 1000000000)
+                    interval_range_min = histogram.get('interval_range_min')
+                    interval_range_max = histogram.get('interval_range_max')
+                    percentage_below_range = histogram.get('percentage_below_range')
+                    index = get_bucket_index(percentage_below_range, cumulative, percent)
+                    rangetype = index.get('rangetype')
+                    latency = None
+                    if rangetype == RangeType.BELOW:
+                        latency = None
+                    elif rangetype == RangeType.INSIDE:
+                        bucket_width = (interval_range_max - interval_range_min) / len(cumulative)
+                        latency = interval_range_min + index.get('index') * bucket_width
+                    elif rangetype == RangeType.ABOVE:
+                        latency = None
+
+                    latencies.append([timestamp, latency])
+
+            qed_over_time.append({
+                'percentile': percent,
+                'latencies': latencies
+            })
+        return qed_over_time
+
     def run(self):
         results = None
         if self.reuse_results:
@@ -433,8 +488,8 @@ class Example:
             with open(self.json_results_filename, "w") as outfile:
                 json.dump(results, outfile)
 
-        ds_qed = calculate_qed(results.get('downstream'), self.qed_percentiles)
-        us_qed = calculate_qed(results.get('upstream'), self.qed_percentiles)
+        ds_qed = self.calculate_qed(results.get('downstream'))
+        us_qed = self.calculate_qed(results.get('upstream'))
 
         if self.write_html_charts:
             write_html_chart(self.chart_title + ' - Downstream', ds_qed)
@@ -610,8 +665,8 @@ class RangeType():
     ABOVE = 3
 
 
-def get_bucket_index(below, cumulative_buckets, percent):
-    if percent <= below:
+def get_bucket_index(percentage_below_range, cumulative_buckets, percent):
+    if percent <= percentage_below_range:
         return {
             'rangetype': RangeType.BELOW,  # The corresponding latency is below the specified latency range
             'index': -1  # Dummy value
@@ -635,53 +690,6 @@ def calculate_cumulative_percentages(below, buckets, total):
         count += bucket
         cumulative.append(count / total * 100)
     return cumulative
-
-
-def make_cumulative(histogram):
-    buckets = histogram.get('interval_packet_count_buckets')
-    below_min = histogram.get('interval_packet_count_below_min')
-    total = histogram.get('interval_packet_count')
-    if total:
-        cumulative_histogram = calculate_cumulative_percentages(
-            below_min,
-            buckets,
-            total)
-        histogram['cumulative_buckets'] = cumulative_histogram
-
-
-def calculate_qed(histograms, percentiles):
-    qed_over_time = []
-
-    for histogram in histograms:
-        make_cumulative(histogram)
-
-    for percent in percentiles.keys():
-        latencies = []
-        for histogram in histograms:
-            cumulative = histogram.get('cumulative_buckets')
-            if cumulative:
-                below = histogram.get('interval_packet_count_below_min')
-                timestamp = datetime.fromtimestamp(histogram.get('interval_timestamp') // 1000000000)
-                interval_range_min = histogram.get('interval_range_min')
-                interval_range_max = histogram.get('interval_range_max')
-                index = get_bucket_index(below, cumulative, percent)
-                rangetype = index.get('rangetype')
-                latency = None
-                if rangetype == RangeType.BELOW:
-                    latency = None
-                elif rangetype == RangeType.INSIDE:
-                    bucket_width = (interval_range_max - interval_range_min) / len(cumulative)
-                    latency = interval_range_min + index.get('index') * bucket_width
-                elif rangetype == RangeType.ABOVE:
-                    latency = None
-
-                latencies.append([timestamp, latency])
-
-        qed_over_time.append({
-            'percentile': percent,
-            'latencies': latencies
-        })
-    return qed_over_time
 
 
 def write_html_chart(title, qed):
