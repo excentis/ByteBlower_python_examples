@@ -1,9 +1,28 @@
 """
-Basic IPv4 with latency measurement example for the ByteBlower Python API.
+This example shows how to perform QED (Quality of Experience Delivered) measurements with the ByteBlower Python API.
+The script creates network traffic that simulates Counterstrike gaming traffic.
+A ByteBlower port is used to simulate the game server.
+A ByteBlower Endpoint is used to simulate gaming on a laptop.
+The gaming traffic consists of a downstream and upstream traffic:
+ * Downstream traffic: 128 UDP packets per second, with an average size of 500 bytes per packet
+ * Upstream traffic: 128 UDP packets per second, with an average size of 200 bytes per packet
+To verify the QED, you can specify the qed_percentiles.
+Each item consist of a percentile and a corresponding latency in nanoseconds.
+For example:
+    'qed_percentiles': { 75: 90000000, 90: 250000000, 99: 300000000 }
+This means that
+ * you want 75% of the traffic to have a latency below 90ms.
+ * you want 90% of the traffic to have a latency below 250ms.
+ * you want 99% of the traffic to have a latency below 300ms.
+The example returns measured QED over time.
+These results can be used by a testing tool like pytest.
+This way you can write automated tests to guarantee Quality of Experience.
+
 All examples are guaranteed to work with Python 2.7 and above
 
-Copyright 2021, Excentis N.V.
+Copyright 2023, Excentis N.V.
 """
+
 
 from __future__ import division
 from __future__ import print_function
@@ -60,9 +79,9 @@ configuration = {
     # Number of frames to send.
     # 'number_of_frames': 4000,
     # 'number_of_frames': 20000,
-    # 'number_of_frames': 76800,  # 10m
+    'number_of_frames': 76800,  # 10m
     # 'number_of_frames': 153600,  # 20m
-    'number_of_frames': 460800,  # 1h
+    # 'number_of_frames': 460800,  # 1h
 
     # How fast must the frames be sent.
     # 'interframe_gap_nanoseconds': 15625000, #64 pps equals "Casual Gaming"
