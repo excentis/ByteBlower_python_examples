@@ -165,7 +165,7 @@ class Example:
         self.reuse_results = False
         # self.reuse_results = True
 
-        self.write_html_charts = True
+        self.write_html_charts = False
         self.chart_title = 'Samsung S10e'
         # self.chart_title = 'Counterstrike - Laptop 56'
 
