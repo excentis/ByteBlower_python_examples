@@ -1,6 +1,7 @@
 """
 This example shows how to perform QED (Quality of Experience Delivered) measurements with the ByteBlower Python API.
 The script creates network traffic that simulates Counterstrike gaming traffic.
+This is an example of a realistic traffic pattern.
 A ByteBlower port is used to simulate the game server.
 A ByteBlower Endpoint is used to simulate gaming on a laptop.
 The gaming traffic consists of a downstream and upstream traffic:
@@ -27,14 +28,12 @@ Copyright 2023, Excentis N.V.
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import json
 import math
 import time
 from datetime import datetime
 
 from byteblowerll import byteblower as api
-from highcharts import Highchart
 
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
@@ -163,9 +162,8 @@ class Example:
 
         # Set to True when you want to save the test results and reuse them. This saves time while developing.
         self.reuse_results = False
-        # self.reuse_results = True
 
-        self.write_html_charts = False
+        self.write_html_charts = True
         self.chart_title = 'Samsung S10e'
         # self.chart_title = 'Counterstrike - Laptop 56'
 
@@ -204,7 +202,6 @@ class Example:
                 'interval_packet_count_in_buckets': packet_count_in_buckets,
                 'interval_packet_count_buckets': packet_count_buckets,
                 'interval_packet_count_above_max': packet_count_above_max
-                # 'interval_packet_loss': interval_packet_loss
             })
 
         return buckets_history
@@ -237,6 +234,7 @@ class Example:
             port_layer3_config.NetmaskSet(self.port_ip_address[1])
             port_layer3_config.GatewaySet(self.port_ip_address[2])
 
+        print("Connecting with the Meeting Point")
         # Connect to the meetingpoint
         self.meetingpoint = byteblower_instance.MeetingPointAdd(self.meetingpoint_address)
 
@@ -636,6 +634,7 @@ class Example:
 
 
 def create_highcharts(title):
+    from highcharts import Highchart
     chart = Highchart(width=1000, height=600)
     styling = '<span style="font-family: \'DejaVu Sans\', Arial, Helvetica, sans-serif; color: '
     options = {
