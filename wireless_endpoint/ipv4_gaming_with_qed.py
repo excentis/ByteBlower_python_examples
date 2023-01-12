@@ -18,6 +18,7 @@ This means that
 The example returns measured QED over time.
 These results can be used by a testing tool like pytest.
 This way you can write automated tests to guarantee Quality of Experience.
+Note: lost packets are ignored in this script.
 
 All examples are guaranteed to work with Python 2.7 and above
 
@@ -76,9 +77,9 @@ configuration = {
     'us_frame_size': 200,  # Average upstream packet size for Counter Strike gaming traffic
 
     # Number of frames to send.
-    # 'number_of_frames': 4000,
+    'number_of_frames': 4000,
     # 'number_of_frames': 20000,
-    'number_of_frames': 76800,  # 10m
+    # 'number_of_frames': 76800,  # 10m
     # 'number_of_frames': 153600,  # 20m
     # 'number_of_frames': 460800,  # 1h
 
@@ -126,6 +127,21 @@ def make_cumulative(histogram):
         histogram['cumulative_buckets'] = cumulative_histogram
 
 
+def get_extra_info(histograms, parameter):
+    latencies = []
+    for histogram in histograms:
+        value = histogram.get(parameter)
+        if value:
+            timestamp = datetime.fromtimestamp(histogram.get('interval_timestamp') // 1000000000)
+            value = histogram.get(parameter)
+            latencies.append([timestamp, value])
+    return latencies
+
+
+def ns_to_ms(ns):
+    return ns / 1e6
+
+
 class Example:
     def __init__(self, **kwargs):
         self.server_address = kwargs.pop('server_address')
@@ -163,9 +179,11 @@ class Example:
         # Set to True when you want to save the test results and reuse them. This saves time while developing.
         self.reuse_results = False
 
-        self.write_html_charts = True
+        self.write_html_charts = False
         self.chart_title = 'Samsung S10e'
         # self.chart_title = 'Counterstrike - Laptop 56'
+
+        self.include_min_avg_max_jit = True
 
     def load_earlier_results(self):
         with open(self.json_results_filename) as json_file:
@@ -178,7 +196,7 @@ class Example:
         for idx in range(interval_length):
             # interval: api.LatencyDistributionResultData = histograms.IntervalGetByIndex(idx)
             interval = histograms.IntervalGetByIndex(idx)
-            interval_packet_count = interval.PacketCountGet()  # should be
+            interval_packet_count = interval.PacketCountGet()
             # interval_packet_loss = expected_packets_per_second - interval_packet_count
             bucket_count = interval.BucketCountGet()
 
@@ -193,16 +211,24 @@ class Example:
                 packet_count_in_buckets = 0
                 packet_count_above_max = 0
 
-            buckets_history.append({
+            item = {
                 'interval_timestamp': interval.TimestampGet(),
-                'interval_range_min': interval.RangeMinimumGet(),
-                'interval_range_max': interval.RangeMaximumGet(),
+                'interval_range_min': ns_to_ms(interval.RangeMinimumGet()),
+                'interval_range_max': ns_to_ms(interval.RangeMaximumGet()),
                 'interval_packet_count': interval_packet_count,
                 'interval_packet_count_below_min': packet_count_below_min,
                 'interval_packet_count_in_buckets': packet_count_in_buckets,
                 'interval_packet_count_buckets': packet_count_buckets,
-                'interval_packet_count_above_max': packet_count_above_max
-            })
+                'interval_packet_count_above_max': packet_count_above_max,
+            }
+
+            if self.include_min_avg_max_jit and interval_packet_count:
+                item['interval_latency_min'] = ns_to_ms(interval.LatencyMinimumGet())
+                item['interval_latency_avg'] = ns_to_ms(interval.LatencyAverageGet())
+                item['interval_latency_max'] = ns_to_ms(interval.LatencyMaximumGet())
+                item['interval_latency_jit'] = ns_to_ms(interval.JitterGet()) + ns_to_ms(interval.LatencyAverageGet())
+
+            buckets_history.append(item)
 
         return buckets_history
 
@@ -406,7 +432,7 @@ class Example:
         us_history = us_latency_trigger.ResultHistoryGet()
 
         print("Waiting for the test to finish")
-        seconds = math.ceil(duration_ns / 1000000000.0)
+        seconds = int(math.ceil(duration_ns / 1000000000.0))
         for second in range(seconds):
             sleep(1)
             # fetch US results regularly, because only 5 intervals max are stored on the server:
@@ -490,9 +516,17 @@ class Example:
                     latencies.append([timestamp, latency])
 
             qed_over_time.append({
-                'percentile': percent,
+                'percentile': "{}%".format(percent),
                 'latencies': latencies
             })
+
+        qed_over_time.append({'percentile': 'Minimum', 'latencies': get_extra_info(histograms, 'interval_latency_min')})
+        qed_over_time.append({'percentile': 'Average', 'latencies': get_extra_info(histograms, 'interval_latency_avg')})
+        qed_over_time.append({'percentile': 'Maximum', 'latencies': get_extra_info(histograms, 'interval_latency_max')})
+        qed_over_time.append({'percentile': 'Jitter+Avg',  'latencies': get_extra_info(histograms, 'interval_latency_jit')})
+
+        qed_over_time.append({'percentile': 'RX Packets',  'latencies': get_extra_info(histograms, 'interval_packet_count')})
+
         return qed_over_time
 
     def run(self):
@@ -657,21 +691,17 @@ def create_highcharts(title):
                 'title': {
                     'text': styling +
                             '#00AEEF; font-size: 12px; line-height: 1.2640625; font-weight: bold; ">Latency [ms]</span>'
-                },
-                'labels': {
-                    'formatter': 'function(){return this.value/1e6}'
                 }
+            },
+            {
+                'title': {
+                    'text': styling +
+                            '#00AEEF; font-size: 12px; line-height: 1.2640625; font-weight: bold; ">RX Packets</span>'
+                },
+                'opposite': 'true'
             }
-        ],
-        'legend': {
-            'title': {
-                'text': styling +
-                        '#F7941C; font-size: 12px; line-height: 1.4640625; font-weight: bold;">Percentiles</span>'
-            }
-        },
-        'tooltip': {
-            'formatter': 'function(){return this.y/1e6}'
-        }
+        ]
+
     }
     chart.set_dict_options(options)
     return chart
@@ -693,7 +723,7 @@ def get_bucket_index(percentage_below_range, cumulative_buckets, percent):
         if percent <= bucket:
             return {
                 'rangetype': RangeType.INSIDE,
-                'index': idx
+                'index': idx + 1  # Add one because the percentile is reached at the end of the bucket
             }
     return {
         'rangetype': RangeType.ABOVE,  # The corresponding latency is above the specified latency range
