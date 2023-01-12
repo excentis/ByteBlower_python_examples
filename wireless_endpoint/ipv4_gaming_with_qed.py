@@ -95,19 +95,19 @@ configuration = {
     'range_min': 0,
     # 'range_max': int(1e7),  # 10ms
     # 'range_max': int(2e7),  # 20ms
-    'range_max': int(1e8),  # 100ms
-    # 'range_max': int(2e8),  # 200ms
+    # 'range_max': int(1e8),  # 100ms
+    'range_max': int(2e8),  # 200ms
     # 'range_max': int(5e8),  # 500ms
     # 'range_max': int(1e9), #1s
 
     'qed_percentiles': {
-        1: 4000000,
-        25: 5000000,
-        50: 10000000,
-        75: 90000000,
-        90: 250000000,
-        99: 300000000,
-        100: 500000000
+        # 1:     3000000,
+        25:    5000000,
+        50:    6000000,
+        75:   10000000,
+        90:   30000000,
+        99:   40000000,
+        100: 150000000
     }
 }
 
@@ -491,13 +491,11 @@ class Example:
         for histogram in histograms:
             make_cumulative(histogram)
 
-        for percent in self.qed_percentiles.keys():
+        for percent, qta in self.qed_percentiles.items():
             latencies = []
             for histogram in histograms:
                 cumulative = histogram.get('cumulative_buckets')
                 if cumulative:
-                    below = histogram.get('interval_packet_count_below_min')
-
                     timestamp = datetime.fromtimestamp(histogram.get('interval_timestamp') // 1000000000)
                     interval_range_min = histogram.get('interval_range_min')
                     interval_range_max = histogram.get('interval_range_max')
@@ -516,16 +514,25 @@ class Example:
                     latencies.append([timestamp, latency])
 
             qed_over_time.append({
-                'percentile': "{}%".format(percent),
-                'latencies': latencies
+                'qed_series': "{}%".format(percent),
+                'qed_values': latencies,
+                'qed_qta': ns_to_ms(qta)
             })
 
-        qed_over_time.append({'percentile': 'Minimum', 'latencies': get_extra_info(histograms, 'interval_latency_min')})
-        qed_over_time.append({'percentile': 'Average', 'latencies': get_extra_info(histograms, 'interval_latency_avg')})
-        qed_over_time.append({'percentile': 'Maximum', 'latencies': get_extra_info(histograms, 'interval_latency_max')})
-        qed_over_time.append({'percentile': 'Jitter+Avg',  'latencies': get_extra_info(histograms, 'interval_latency_jit')})
+        qed_over_time.append(
+            {'qed_series': 'Minimum', 'qed_values': get_extra_info(histograms, 'interval_latency_min')})
+        qed_over_time.append(
+            {'qed_series': 'Average', 'qed_values': get_extra_info(histograms, 'interval_latency_avg')})
+        qed_over_time.append(
+            {'qed_series': 'Maximum', 'qed_values': get_extra_info(histograms, 'interval_latency_max')})
+        qed_over_time.append(
+            {'qed_series': 'Jitter+Avg', 'qed_values': get_extra_info(histograms, 'interval_latency_jit')})
 
-        qed_over_time.append({'percentile': 'RX Packets',  'latencies': get_extra_info(histograms, 'interval_packet_count')})
+        qed_over_time.append({
+            'qed_series': 'RX Packets',
+            'qed_values': get_extra_info(histograms, 'interval_packet_count'),
+            'qed_axis': 1
+        })
 
         return qed_over_time
 
@@ -704,6 +711,7 @@ def create_highcharts(title):
 
     }
     chart.set_dict_options(options)
+
     return chart
 
 
@@ -742,10 +750,20 @@ def calculate_cumulative_percentages(below, buckets, total):
 
 def write_html_chart(title, qed):
     chart = create_highcharts(title)
-    sorted_list = sorted(qed, key=lambda x: x['percentile'])
+    sorted_list = sorted(qed, key=lambda x: x['qed_series'])
     for item in sorted_list:
-        percentile = item.get('percentile')
-        chart.add_data_set(item.get('latencies'), 'line', str(percentile), yAxis=0)
+        series = item.get('qed_series')
+        qta = item.get('qed_qta')
+        axis = item.get('qed_axis')
+        if axis is None:
+            axis = 0
+        if qta:
+            chart.add_data_set(
+                item.get('qed_values'), 'areaspline', str(series), yAxis=axis, threshold=int(qta), negativeFillColor='transparent')
+        else:
+            chart.add_data_set(
+                item.get('qed_values'), 'areaspline', str(series), yAxis=axis, fillColor='transparent')
+
     chart.save_file(title)
 
 
