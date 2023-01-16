@@ -7,6 +7,7 @@ A ByteBlower Endpoint is used to simulate gaming on a laptop.
 The gaming traffic consists of a downstream and upstream traffic:
  * Downstream traffic: 128 UDP packets per second, with an average size of 500 bytes per packet
  * Upstream traffic: 128 UDP packets per second, with an average size of 200 bytes per packet
+
 To verify the QED, you can specify the qed_percentiles.
 Each item consist of a percentile and a corresponding latency in nanoseconds.
 For example:
@@ -15,6 +16,7 @@ This means that
  * you want 75% of the traffic to have a latency below 90ms.
  * you want 90% of the traffic to have a latency below 250ms.
  * you want 99% of the traffic to have a latency below 300ms.
+
 The example returns measured QED over time.
 These results can be used by a testing tool like pytest.
 This way you can write automated tests to guarantee Quality of Experience.
@@ -101,9 +103,6 @@ configuration = {
     # 'range_max': int(1e9), #1s
 
     'qed_percentiles': {
-        # 1:     3000000,
-        25:    5000000,
-        50:    6000000,
         75:   10000000,
         90:   30000000,
         99:   40000000,
@@ -180,9 +179,9 @@ class Example:
         self.reuse_results = False
 
         self.write_html_charts = False
-        self.chart_title = 'Samsung S10e'
-        # self.chart_title = 'Counterstrike - Laptop 56'
-
+        self.chart_title = 'Counterstrike - Laptop 56'
+        # self.chart_title = 'Samsung S10e'
+        
         self.include_min_avg_max_jit = True
 
     def load_earlier_results(self):
@@ -707,8 +706,16 @@ def create_highcharts(title):
                 },
                 'opposite': 'true'
             }
-        ]
-
+        ],
+        'plotOptions': {
+            'series': {
+                'marker': {
+                    'enabled': False,
+                    'symbol': 'dot',
+                    'radius': 2
+                }
+            }
+        }
     }
     chart.set_dict_options(options)
 
