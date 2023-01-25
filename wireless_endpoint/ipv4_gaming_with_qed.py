@@ -1,6 +1,17 @@
 """
 This example shows how to perform QED (Quality of Experience Delivered) measurements with the ByteBlower Python API.
 The script creates network traffic that simulates Counterstrike gaming traffic.
+
+To run the script, you can simply execute "python ipv4_gaming_with_qed.py"
+All parameters are configurable at the top of the script.
+
+This example is guaranteed to work with Python 2.7 and above.
+
+By default, no graphs are generated.
+If you want graphs, put the write_html_charts variable to True.
+Then you also have to pip install python-highcharts
+Note: python-highcharts only works for Python versions until 3.10.
+
 This is an example of a realistic traffic pattern.
 A ByteBlower port is used to simulate the game server.
 A ByteBlower Endpoint is used to simulate gaming on a laptop.
@@ -9,24 +20,22 @@ The gaming traffic consists of a downstream and upstream traffic:
  * Upstream traffic: 128 UDP packets per second, with an average size of 200 bytes per packet
 
 To verify the QED, you can specify the qed_percentiles.
-Each item consist of a percentile and a corresponding latency in nanoseconds.
+Each item consist of a percentile and a corresponding latency limit in nanoseconds.
 For example:
     'qed_percentiles': { 75: 90000000, 90: 250000000, 99: 300000000 }
 This means that
  * you want 75% of the traffic to have a latency below 90ms.
  * you want 90% of the traffic to have a latency below 250ms.
  * you want 99% of the traffic to have a latency below 300ms.
-
 The example returns measured QED over time.
-These results can be used by a testing tool like pytest.
-This way you can write automated tests to guarantee Quality of Experience.
-Note: lost packets are ignored in this script.
 
-All examples are guaranteed to work with Python 2.7 and above
+This script can also be integrated in an automated test framework.
+This way you can write automated tests to guarantee Quality of Experience, for example by a testing tool like pytest.
+
+Note: lost packets are ignored in this script.
 
 Copyright 2023, Excentis N.V.
 """
-
 
 from __future__ import division
 from __future__ import print_function
@@ -41,8 +50,10 @@ from byteblowerll import byteblower as api
 configuration = {
     # Address (IP or FQDN) of the ByteBlower server to use
     'server_address': '10.10.1.202',
+    # 'server_address': 'byteblower-dev-4100-2.lab.byteblower.excentis.com',
 
     # Interface on the server to create a port on.
+    # 'server_interface': 'trunk-1-1',
     'server_interface': 'trunk-1-7',
 
     # MAC address of the ByteBlower port which will be generated
@@ -66,9 +77,10 @@ configuration = {
     # Special value: None.  When the UUID is set to None, the example will
     # automatically select the first available wireless endpoint.
     # 'wireless_endpoint_uuid': None,
-    # 'wireless_endpoint_uuid': '977d5a57-8668-436e-ae81-2cfda87cc8ef',  # laptop 56
-    'wireless_endpoint_uuid': '3c2e5afe66779ec7',  # S10e
+    'wireless_endpoint_uuid': '977d5a57-8668-436e-ae81-2cfda87cc8ef',  # laptop 56
+    # 'wireless_endpoint_uuid': '3c2e5afe66779ec7',  # S10e
     # 'wireless_endpoint_uuid': '65e298b8-5206-455c-8a38-6cd254fc59a2',
+    # 'wireless_endpoint_uuid': 'b5f2fc46-5e55-4a9b-9090-150daf78d0c0',  # Golden Client
 
     # Whether the Wireless Endpoint is behind a NATted device.
     # e.g. a home-router.  If unsure, leave on True
@@ -88,25 +100,36 @@ configuration = {
     # How fast must the frames be sent.
     # 'interframe_gap_nanoseconds': 15625000, #64 pps equals "Casual Gaming"
     'interframe_gap_nanoseconds': 7812500,  # 128 pps equals "Pro Gaming"
+    # 'interframe_gap_nanoseconds':  10000000,  # 128 pps equals "Pro Gaming"
 
-    'udp_srcport': 4096,
-    'udp_dstport': 4096,
+    'udp_srcport': 4098,
+    'udp_dstport': 4099,
 
     # Latency histogram range in nanoseconds.
-    # The ByteBlower default is: 0 to 1 seconds
+    # The ByteBlower server internally divides the range into 1000 measurement buckets.
     'range_min': 0,
-    # 'range_max': int(1e7),  # 10ms
     # 'range_max': int(2e7),  # 20ms
     # 'range_max': int(1e8),  # 100ms
-    'range_max': int(2e8),  # 200ms
+    'range_max': int(15e7),   # 150ms
+    # 'range_max': int(2e8),  # 200ms
     # 'range_max': int(5e8),  # 500ms
-    # 'range_max': int(1e9), #1s
+    # 'range_max': int(1e9),  #1s
 
+    # Each item consist of a percentile and a corresponding latency limit in nanoseconds.
+    # For example:
+    #     'qed_percentiles': { 75: 90000000, 90: 250000000, 99: 300000000 }
+    # This means that
+    #  * you want 75% of the traffic to have a latency below 90ms.
+    #  * you want 90% of the traffic to have a latency below 250ms.
+    #  * you want 99% of the traffic to have a latency below 300ms.
     'qed_percentiles': {
-        75:   10000000,
-        90:   30000000,
-        99:   40000000,
-        100: 150000000
+        # 1:     3000000,
+        # 25:    5000000,
+        # 50:   12000000,
+        75:   50000000,
+        90:  100000000,
+        99:  110000000
+        # 100: 125000000
     }
 }
 
@@ -173,24 +196,27 @@ class Example:
         self.wireless_endpoint = None
 
         self.qed_percentiles = kwargs.pop('qed_percentiles')
-        self.json_results_filename = 'samples.json'
+        self.time_now = time.strftime(" - %Y%m%d-%H%M%S")
+        self.json_results_filename = 'samples' + self.time_now + '.json'
 
         # Set to True when you want to save the test results and reuse them. This saves time while developing.
         self.reuse_results = False
 
         self.write_html_charts = False
-        self.chart_title = 'Counterstrike - Laptop 56'
-        # self.chart_title = 'Samsung S10e'
-        
-        self.include_min_avg_max_jit = True
+        self.chart_title = None
+
+        self.include_min_avg_max_jit = False
+
+        self.qed_pass = True
 
     def load_earlier_results(self):
-        with open(self.json_results_filename) as json_file:
+        with open('samples.json') as json_file:
             return json.load(json_file)
 
     def get_buckets(self, histograms):
         buckets_history = []
         interval_length = histograms.IntervalLengthGet()
+        print("Number of intervals in history: %i" % interval_length)
 
         for idx in range(interval_length):
             # interval: api.LatencyDistributionResultData = histograms.IntervalGetByIndex(idx)
@@ -268,6 +294,7 @@ class Example:
             self.wireless_endpoint_uuid = self.select_wireless_endpoint_uuid()
 
         # Get the WirelessEndpoint device
+        # self.wireless_endpoint: api.WirelessEndpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
         self.wireless_endpoint = self.meetingpoint.DeviceGet(self.wireless_endpoint_uuid)
         print("Using wireless endpoint",
               self.wireless_endpoint.DescriptionGet())
@@ -282,7 +309,11 @@ class Example:
         # otherwise it will be the MAC address of the gateway.
         # ByteBlower has a function to resolve the correct MAC address in
         # the Layer3 configuration object
-        network_info = self.wireless_endpoint.DeviceInfoGet().NetworkInfoGet()
+        # device_info: api.DeviceInfo = self.wireless_endpoint.DeviceInfoGet()
+        device_info = self.wireless_endpoint.DeviceInfoGet()
+        network_info = device_info.NetworkInfoGet()
+        device_name = device_info.GivenNameGet()
+        self.chart_title = device_name
         endpoint_ipv4 = network_info.IPv4Get()
 
         port_mac = self.port.Layer2EthIIGet().MacGet()
@@ -359,20 +390,31 @@ class Example:
 
         # Since a stream transmits frames, we need to tell the stream which
         # frames we want to transmit
+        # ds_frame: api.Frame = down_stream.FrameAdd()
         ds_frame = down_stream.FrameAdd()
         ds_frame.BytesSet(ds_hexbytes)
 
-        # TODO - Add frame size modifier, to make the packet size vary according to a normal distribution
         # Add a random frame size modifier:
         # modifier: api.FrameSizeModifierRandom = ds_frame.ModifierSizeRandomSet()
-        # modifier.MinimumSet(60)
-        # modifier.MaximumSet(1283)
+        modifier = ds_frame.ModifierSizeRandomSet()
+        ds_frame.L3AutoChecksumEnable(True)
+        ds_frame.L4AutoChecksumEnable(True)
+        ds_frame.L3AutoLengthEnable(True)
+        ds_frame.L4AutoLengthEnable(True)
+        modifier.MinimumSet(60)
+        modifier.MaximumSet(1283)
 
         # us_frame: api.FrameMobile = up_stream.FrameAdd()
         us_frame = up_stream.FrameAdd()
         us_frame.PayloadSet(us_hexbytes)
 
-        # Enable latency for this frame.
+        # us_modifier: api.FrameMobile = us_frame.ModifierSizeRandomSet()
+        # us_frame.L3AutoChecksumEnable(True)
+        # us_frame.L4AutoChecksumEnable(True)
+        # us_modifier.MinimumSet(60)
+        # us_modifier.MaximumSet(1283)
+
+        # Enable time tag for this frame, to enable latency measurements..
         # The frame contents will be altered, so it contains a timestamp.
         ds_frame_tag = ds_frame.FrameTagTimeGet()
         ds_frame_tag.Enable(True)
@@ -416,7 +458,7 @@ class Example:
         current_time_posix = self.meetingpoint.TimestampGet()
 
         time_to_wait_ns = starttime_posix - current_time_posix
-        # Wait 200 ms longer, to make sure the wireless endpoint has started.
+        # Wait 200 ms longer, to make sure the ByteBlower endpoint has started.
         time_to_wait_ns += 200000000
 
         print("Waiting for", time_to_wait_ns / 1000000000.0, "to start the port")
@@ -446,7 +488,7 @@ class Example:
         sleep(1)
 
         # Get all results from the ByteBlower Endpoint
-        self.wireless_endpoint.HeartbeatIntervalSet(10)
+        self.wireless_endpoint.HeartbeatIntervalSet(20)
         self.wireless_endpoint.ResultGet()
         self.wireless_endpoint.HeartbeatIntervalSet(1)
 
@@ -492,6 +534,11 @@ class Example:
 
         for percent, qta in self.qed_percentiles.items():
             latencies = []
+            qta_ms = ns_to_ms(qta)
+            legend_annotations = []
+
+            latency_above_qta = False
+            latency_above_range = False
             for histogram in histograms:
                 cumulative = histogram.get('cumulative_buckets')
                 if cumulative:
@@ -503,35 +550,55 @@ class Example:
                     rangetype = index.get('rangetype')
                     latency = None
                     if rangetype == RangeType.BELOW:
-                        latency = None
+                        latency = ns_to_ms(self.range_min)
                     elif rangetype == RangeType.INSIDE:
                         bucket_width = (interval_range_max - interval_range_min) / len(cumulative)
                         latency = interval_range_min + index.get('index') * bucket_width
+                        if latency > qta_ms:
+                            latency_above_qta = True
                     elif rangetype == RangeType.ABOVE:
-                        latency = None
+                        # The precise latency is unknown, but we know that it lies above the specified range.
+                        # As a visual indication, we use the max latency value, even though the exact value is unknown:
+                        latency = None # 1234 # TODO ns_to_ms(maximum)
+                        latency_above_range = True
 
                     latencies.append([timestamp, latency])
 
+            draw_qta_line = False
+            if latency_above_qta:
+                legend_annotations.append('Above Limit')
+                self.qed_pass = False
+                draw_qta_line = True
+            if latency_above_range:
+                legend_annotations.append('Above Range')
+                self.qed_pass = False
+
+            legend_annotation = ', '.join(legend_annotations)
+            if legend_annotation:
+                legend_annotation = ' (' + legend_annotation + ')'
+
+            qta_line = qta_ms if draw_qta_line else None
             qed_over_time.append({
-                'qed_series': "{}%".format(percent),
+                'qed_series': '{}%'.format(percent) + ', limit ' + '{}'.format(qta_ms) + 'ms' + legend_annotation,
                 'qed_values': latencies,
-                'qed_qta': ns_to_ms(qta)
+                'qed_qta': qta_line
             })
 
-        qed_over_time.append(
-            {'qed_series': 'Minimum', 'qed_values': get_extra_info(histograms, 'interval_latency_min')})
-        qed_over_time.append(
-            {'qed_series': 'Average', 'qed_values': get_extra_info(histograms, 'interval_latency_avg')})
-        qed_over_time.append(
-            {'qed_series': 'Maximum', 'qed_values': get_extra_info(histograms, 'interval_latency_max')})
-        qed_over_time.append(
-            {'qed_series': 'Jitter+Avg', 'qed_values': get_extra_info(histograms, 'interval_latency_jit')})
+        if self.include_min_avg_max_jit:
+            qed_over_time.append(
+                {'qed_series': 'Minimum', 'qed_values': get_extra_info(histograms, 'interval_latency_min')})
+            qed_over_time.append(
+                {'qed_series': 'Average', 'qed_values': get_extra_info(histograms, 'interval_latency_avg')})
+            qed_over_time.append(
+                {'qed_series': 'Maximum', 'qed_values': get_extra_info(histograms, 'interval_latency_max')})
+            qed_over_time.append(
+                {'qed_series': 'Jitter+Avg', 'qed_values': get_extra_info(histograms, 'interval_latency_jit')})
 
-        qed_over_time.append({
-            'qed_series': 'RX Packets',
-            'qed_values': get_extra_info(histograms, 'interval_packet_count'),
-            'qed_axis': 1
-        })
+            qed_over_time.append({
+                'qed_series': 'RX Packets',
+                'qed_values': get_extra_info(histograms, 'interval_packet_count'),
+                'qed_axis': 1
+            })
 
         return qed_over_time
 
@@ -547,10 +614,27 @@ class Example:
 
         ds_qed = self.calculate_qed(results.get('downstream'))
         us_qed = self.calculate_qed(results.get('upstream'))
-
+        if self.qed_pass:
+            pass_fail = 'PASS'
+        else:
+            pass_fail = 'FAIL'
         if self.write_html_charts:
-            write_html_chart(self.chart_title + ' - Downstream', ds_qed)
-            write_html_chart(self.chart_title + ' - Upstream', us_qed)
+            title = 'QED - '
+            if self.chart_title:
+                title += self.chart_title
+            title += self.time_now
+            write_html_chart(
+                title + ' - Downstream',
+                pass_fail,
+                ds_qed,
+                self.range_min,
+                self.range_max)
+            write_html_chart(
+                title + ' - Upstream',
+                pass_fail,
+                us_qed,
+                self.range_min,
+                self.range_max)
 
         qed = {
             'downstream': ds_qed,
@@ -673,17 +757,22 @@ class Example:
         print("Device back available")
 
 
-def create_highcharts(title):
+def create_highcharts(title, range_min, range_max):
     from highcharts import Highchart
     chart = Highchart(width=1000, height=600)
     styling = '<span style="font-family: \'DejaVu Sans\', Arial, Helvetica, sans-serif; color: '
     options = {
         'title': {
             'text': styling +
-                    '#00AEEF; font-size: 20px; line-height: 1.2640625; ">' + 'Pro Gaming ' + title + ' QED </span>'
+                    '#00AEEF; font-size: 20px; line-height: 1.2640625; ">' + 'Pro Gaming ' + title + '</span>'
         },
         'chart': {
             'zoomType': 'x'
+        },
+        'credits': {
+            'text': styling + '#00AEEF; font-size: 20px; line-height: 1.2640625; "> ByteBlower, a product by Excentis </span>',
+            'href': 'https://www.excentis.com',
+            'enabled': True
         },
         'xAxis': {
             'type': 'datetime',
@@ -697,7 +786,12 @@ def create_highcharts(title):
                 'title': {
                     'text': styling +
                             '#00AEEF; font-size: 12px; line-height: 1.2640625; font-weight: bold; ">Latency [ms]</span>'
-                }
+                },
+                'plotBands': [{
+                    'color': '#FAFAFA',
+                    'from': ns_to_ms(range_min),
+                    'to': ns_to_ms(range_max)
+                }]
             },
             {
                 'title': {
@@ -707,6 +801,7 @@ def create_highcharts(title):
                 'opposite': 'true'
             }
         ],
+
         'plotOptions': {
             'series': {
                 'marker': {
@@ -755,8 +850,8 @@ def calculate_cumulative_percentages(below, buckets, total):
     return cumulative
 
 
-def write_html_chart(title, qed):
-    chart = create_highcharts(title)
+def write_html_chart(title, pass_fail, qed, range_min, range_max):
+    chart = create_highcharts(title + ' - ' + pass_fail, range_min, range_max)
     sorted_list = sorted(qed, key=lambda x: x['qed_series'])
     for item in sorted_list:
         series = item.get('qed_series')
@@ -766,7 +861,8 @@ def write_html_chart(title, qed):
             axis = 0
         if qta:
             chart.add_data_set(
-                item.get('qed_values'), 'areaspline', str(series), yAxis=axis, threshold=int(qta), negativeFillColor='transparent')
+                item.get('qed_values'), 'areaspline', str(series), yAxis=axis, threshold=int(qta),
+                negativeFillColor='transparent')
         else:
             chart.add_data_set(
                 item.get('qed_values'), 'areaspline', str(series), yAxis=axis, fillColor='transparent')
