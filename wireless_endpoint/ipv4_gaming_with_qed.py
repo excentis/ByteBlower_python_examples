@@ -5,6 +5,9 @@ The script creates network traffic that simulates Counterstrike gaming traffic.
 To run the script, you can simply execute "python ipv4_gaming_with_qed.py"
 All parameters are configurable at the top of the script.
 
+Here you can find an example output graph:
+https://github.com/excentis/ByteBlower_python_examples/blob/master/wireless_endpoint/demo_results/ipv4_gaming_with_qed.html
+
 This example is guaranteed to work with Python 2.7 and above.
 
 By default, no graphs are generated.
