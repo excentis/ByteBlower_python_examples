@@ -98,7 +98,7 @@ class Example:
         self.wireless_endpoint = None
 
     def run(self):
-        # duration of the samples taken. (nanoseconds)
+        # duration of the samples taken. (100 milliseconds in nanoseconds)
         sample_duration = 100000000
 
         # number of samples to take:
