@@ -230,9 +230,15 @@ class Example:
             time.sleep(1)
             status = self.wireless_endpoint.StatusGet()
             now = datetime.datetime.now()
+
+            num_clients = http_server.ClientIdentifiersGet().size()
             print(str(now), ":: Running for", str(now - start_moment), "::",
-                  http_server.ClientIdentifiersGet().size(),
-                  "client(s) connected")
+                  num_clients, "client(s) connected")
+
+            for client_identifier in http_server.ClientIdentifiersGet():
+                session = http_server.HttpSessionInfoGet(client_identifier)
+                http_history = session.ResultHistoryGet()
+                http_history.Refresh()
 
         # Wireless Endpoint has returned. Collect and process the results.
 
